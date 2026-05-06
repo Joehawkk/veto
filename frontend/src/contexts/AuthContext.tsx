@@ -1,14 +1,15 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 
 interface AuthUser {
-  id: number
+  id: string
   username: string
+  display_name: string
 }
 
 interface AuthContextType {
   token: string | null
   user: AuthUser | null
-  login: (token: string, userId: number, username: string) => void
+  login: (token: string, userId: string, username: string, displayName: string) => void
   logout: () => void
   isAuthenticated: boolean
 }
@@ -28,19 +29,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
   const [user, setUser] = useState<AuthUser | null>(loadUser)
 
-  const login = useCallback((token: string, userId: number, username: string) => {
-    const u = { id: userId, username }
+  const login = useCallback((token: string, userId: string, username: string, displayName: string) => {
+    const u: AuthUser = { id: userId, username, display_name: displayName }
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(u))
     setToken(token)
     setUser(u)
+    window.dispatchEvent(new Event('veto-auth-change'))
   }, [])
 
   const logout = useCallback(() => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    sessionStorage.removeItem('veto_current')
+    sessionStorage.removeItem('veto_result')
     setToken(null)
     setUser(null)
+    window.dispatchEvent(new Event('veto-auth-change'))
   }, [])
 
   return (

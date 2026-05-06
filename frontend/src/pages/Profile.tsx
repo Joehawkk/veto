@@ -59,7 +59,7 @@ export default function ProfilePage() {
 
   function handleLogout() {
     logout()
-    navigate('/', { replace: true })
+    navigate('/landing', { replace: true })
   }
 
   async function handleDeleteAccount() {
@@ -67,7 +67,7 @@ export default function ProfilePage() {
     try {
       await api.profile.delete()
       logout()
-      navigate('/', { replace: true })
+      navigate('/landing', { replace: true })
     } catch {
       setDeleteLoading(false)
       setShowDeleteConfirm(false)

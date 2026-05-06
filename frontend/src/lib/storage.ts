@@ -43,10 +43,17 @@ export interface CheckResult {
   localVerdict: Verdict
 }
 
+function getUserSuffix(): string {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') ?? 'null')
+    return user?.id ? `_${user.id}` : ''
+  } catch { return '' }
+}
+
 const KEYS = {
-  profile: 'veto_profile',
-  history: 'veto_history',
-  onboarded: 'veto_onboarded',
+  get profile() { return `veto_profile${getUserSuffix()}` },
+  get history() { return `veto_history${getUserSuffix()}` },
+  get onboarded() { return `veto_onboarded${getUserSuffix()}` },
   current: 'veto_current',
   result: 'veto_result',
 }
