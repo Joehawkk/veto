@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { api, type AccountUser } from '../api/client'
+import BottomNav from '../components/BottomNav'
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -33,14 +33,13 @@ export default function Accounts() {
   return (
     <div className="min-h-screen bg-bg">
       <header className="flex items-center gap-4 px-6 py-5 bg-white border-b border-border">
-        <Link to="/" className="text-muted hover:text-dark transition-colors text-lg">←</Link>
         <div className="flex-1">
           <h1 className="text-xl font-black text-dark">Аккаунты</h1>
           <p className="text-muted text-xs">{users.length} пользователей в базе</p>
         </div>
       </header>
 
-      <main className="px-4 py-5 max-w-lg mx-auto">
+      <main className="px-4 py-5 pb-24 max-w-lg mx-auto">
         {/* Search */}
         <input
           type="text"
@@ -117,6 +116,7 @@ export default function Accounts() {
           ))}
         </div>
       </main>
+      <BottomNav />
     </div>
   )
 }
