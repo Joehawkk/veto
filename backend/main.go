@@ -1,0 +1,88 @@
+package main
+
+import (
+	"log"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+
+	"veto/config"
+	"veto/db"
+	"veto/handlers"
+	"veto/middleware"
+)
+
+func main() {
+	cfg := config.Load()
+
+	database, err := db.Connect(cfg.DBPath)
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	defer database.Close()
+
+	if err := db.Migrate(database); err != nil {
+		log.Fatal("Failed to run migrations:", err)
+	}
+
+	if err := db.Seed(database); err != nil {
+		log.Printf("Seed warning: %v", err)
+	}
+
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		},
+	})
+
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+	}))
+	app.Use(logger.New())
+
+	h := handlers.New(database, cfg)
+	api := app.Group("/api")
+
+	// Auth
+	auth := api.Group("/auth")
+	auth.Post("/register", h.Register)
+	auth.Post("/login", h.Login)
+
+	// Protected
+	p := api.Group("", middleware.AuthRequired(cfg.JWTSecret))
+
+	// Profile
+	p.Get("/profile", h.GetProfile)
+	p.Delete("/profile", h.DeleteProfile)
+
+	// Goals
+	p.Get("/goals", h.GetGoals)
+	p.Post("/goals", h.CreateGoal)
+	p.Put("/goals/:id", h.UpdateGoal)
+
+	// Vetos
+	p.Post("/vetos", h.CreateVeto)
+	p.Patch("/vetos/:id/goal", h.MoveVetoGoal)
+
+	// Feed & Respects
+	p.Get("/feed", h.GetFeed)
+	p.Post("/respects", h.CreateRespect)
+
+	// Groups
+	p.Get("/groups", h.GetGroups)
+	p.Post("/groups", h.CreateGroup)
+	p.Post("/groups/join", h.JoinGroup)
+	p.Get("/groups/:id", h.GetGroupDetail)
+	p.Get("/groups/:id/feed", h.GetGroupFeed)
+	p.Delete("/groups/:id/leave", h.LeaveGroup)
+
+	// Notifications
+	p.Get("/notifications", h.GetNotifications)
+	p.Post("/notifications/read", h.MarkNotificationsRead)
+
+	log.Printf("VETO backend on :%s (db: %s)", cfg.Port, cfg.DBPath)
+	log.Fatal(app.Listen(":" + cfg.Port))
+}
