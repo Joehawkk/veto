@@ -1,0 +1,16 @@
+# Backend
+backend/veto.db
+backend/server.exe
+backend/*.exe
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Env
+frontend/.env
+.env
+
+# OS
+.DS_Store
+Thumbs.db
