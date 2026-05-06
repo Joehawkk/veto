@@ -2,11 +2,24 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useHistory } from '../hooks/useHistory'
 import { type HistoryEntry } from '../lib/storage'
 import { getVerdictMeta } from '../lib/scoring'
+import { api } from '../api/client'
 
 const OUTCOME = {
   stopped: { label: 'Отказался', icon: '💚' },
   bought:  { label: 'Купил',     icon: '🛒' },
   pending: { label: 'Ожидает',   icon: '⏳' },
+}
+
+function outcomeCardClass(entry: HistoryEntry): string {
+  if (entry.outcome === 'stopped') {
+    return 'border-green-400 bg-green-50 shadow-[0_0_0_1px_rgba(74,222,128,0.4)]'
+  }
+  if (entry.outcome === 'bought') {
+    if (entry.aiVerdict === 'go')   return 'border-green-400 bg-green-50 shadow-[0_0_0_1px_rgba(74,222,128,0.4)]'
+    if (entry.aiVerdict === 'wait') return 'border-amber-400 bg-amber-50 shadow-[0_0_0_1px_rgba(251,191,36,0.4)]'
+    return 'border-red-400 bg-red-50 shadow-[0_0_0_1px_rgba(248,113,113,0.4)]'
+  }
+  return 'border-border bg-white'
 }
 
 function getTimeLeft(deadline: string): string {
@@ -29,9 +42,16 @@ function Card({ entry, onOutcome }: { entry: HistoryEntry; onOutcome: (id: strin
   const expired = hasTimer && new Date(entry.timerDeadline!).getTime() < Date.now()
   const date = new Date(entry.createdAt).toLocaleDateString('ru', { day: 'numeric', month: 'short' })
 
+  function handleOutcome(outcome: 'stopped' | 'bought') {
+    onOutcome(entry.id, outcome)
+    if (outcome === 'stopped') {
+      api.vetos.create({ amount: entry.price, description: entry.name }).catch(() => {})
+    }
+  }
+
   return (
     <div
-      className="bg-white border border-border rounded-2xl p-4 shadow-card cursor-pointer hover:shadow-card-hover hover:border-border-dark transition-all"
+      className={`border rounded-2xl p-4 cursor-pointer hover:shadow-card-hover transition-all ${outcomeCardClass(entry)}`}
       onClick={() => navigate(`/history/${entry.id}`)}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
@@ -77,13 +97,13 @@ function Card({ entry, onOutcome }: { entry: HistoryEntry; onOutcome: (id: strin
       {isPending && (
         <div className="flex gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => onOutcome(entry.id, 'stopped')}
+            onClick={() => handleOutcome('stopped')}
             className="flex-1 bg-primary/10 border border-primary/25 text-primary text-sm font-bold py-2.5 rounded-xl hover:bg-primary/20 active:scale-95 transition-all"
           >
             💚 Отказался
           </button>
           <button
-            onClick={() => onOutcome(entry.id, 'bought')}
+            onClick={() => handleOutcome('bought')}
             className="flex-1 bg-bg border border-border text-gray-dark text-sm font-bold py-2.5 rounded-xl hover:border-border-dark active:scale-95 transition-all"
           >
             🛒 Купил

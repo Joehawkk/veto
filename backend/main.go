@@ -16,7 +16,7 @@ import (
 func main() {
 	cfg := config.Load()
 
-	database, err := db.Connect(cfg.DBPath)
+	database, err := db.Connect(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -46,7 +46,7 @@ func main() {
 	h := handlers.New(database, cfg)
 	api := app.Group("/api")
 
-	// Auth
+	// Auth (public)
 	auth := api.Group("/auth")
 	auth.Post("/register", h.Register)
 	auth.Post("/login", h.Login)
@@ -55,8 +55,12 @@ func main() {
 	// Protected
 	p := api.Group("", middleware.AuthRequired(cfg.JWTSecret))
 
+	// Current user
+	p.Get("/me", h.GetMe)
+
 	// Profile
 	p.Get("/profile", h.GetProfile)
+	p.Patch("/profile", h.UpdateProfile)
 	p.Delete("/profile", h.DeleteProfile)
 
 	// Goals
@@ -64,7 +68,8 @@ func main() {
 	p.Post("/goals", h.CreateGoal)
 	p.Put("/goals/:id", h.UpdateGoal)
 
-	// Vetos
+	// Vetos (history)
+	p.Get("/vetos", h.GetVetos)
 	p.Post("/vetos", h.CreateVeto)
 	p.Patch("/vetos/:id/goal", h.MoveVetoGoal)
 
@@ -84,6 +89,9 @@ func main() {
 	p.Get("/notifications", h.GetNotifications)
 	p.Post("/notifications/read", h.MarkNotificationsRead)
 
-	log.Printf("VETO backend on :%s (db: %s)", cfg.Port, cfg.DBPath)
+	// Users list
+	p.Get("/users", h.ListUsers)
+
+	log.Printf("VETO backend on :%s", cfg.Port)
 	log.Fatal(app.Listen(":" + cfg.Port))
 }
