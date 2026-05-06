@@ -3,6 +3,7 @@ import { useHistory } from '../hooks/useHistory'
 import { type HistoryEntry } from '../lib/storage'
 import { getVerdictMeta } from '../lib/scoring'
 import { api } from '../api/client'
+import BottomNav from '../components/BottomNav'
 
 const OUTCOME = {
   stopped: { label: 'Отказался', icon: '💚' },
@@ -121,14 +122,13 @@ export default function History() {
     <div className="min-h-screen bg-bg">
       {/* Header */}
       <header className="flex items-center gap-4 px-6 py-5 bg-white border-b border-border">
-        <Link to="/" className="text-muted hover:text-dark transition-colors text-lg">←</Link>
         <div className="flex-1">
           <h1 className="text-xl font-black text-dark">История</h1>
           <p className="text-muted text-xs">{history.length} проверок</p>
         </div>
       </header>
 
-      <main className="px-6 py-6 max-w-md mx-auto">
+      <main className="px-6 py-6 pb-24 max-w-md mx-auto">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="bg-white border border-border rounded-2xl p-3 text-center shadow-card">
@@ -173,6 +173,7 @@ export default function History() {
           </div>
         )}
       </main>
+      <BottomNav />
     </div>
   )
 }

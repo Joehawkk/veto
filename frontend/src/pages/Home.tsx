@@ -4,6 +4,7 @@ import { setCurrent } from '../lib/storage'
 import { useHistory } from '../hooks/useHistory'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../contexts/AuthContext'
+import BottomNav from '../components/BottomNav'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -35,30 +36,16 @@ export default function Home() {
           <span className="text-primary font-black text-2xl tracking-widest">VETO</span>
           <p className="text-muted text-xs mt-0.5">осознанные покупки</p>
         </div>
-        <div className="flex items-center gap-4">
-          <Link
-            to="/history"
-            className="flex items-center gap-1.5 text-sm font-medium text-gray-dark hover:text-primary transition-colors"
-          >
-            <span>📋</span><span>История</span>
-          </Link>
-          <Link
-            to="/accounts"
-            className="flex items-center gap-1.5 text-sm font-medium text-gray-dark hover:text-primary transition-colors"
-          >
-            <span>👥</span><span>Акки</span>
-          </Link>
-          <button
-            onClick={logout}
-            className="text-sm text-muted hover:text-secondary transition-colors"
-            title="Выйти"
-          >
-            Выйти
-          </button>
-        </div>
+        <button
+          onClick={logout}
+          className="text-sm text-muted hover:text-secondary transition-colors"
+          title="Выйти"
+        >
+          Выйти
+        </button>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-10 max-w-md mx-auto w-full gap-5">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-10 pb-24 max-w-md mx-auto w-full gap-5">
 
         {/* Greeting */}
         <p className="text-muted text-sm self-start">
@@ -180,6 +167,7 @@ export default function Home() {
           </div>
         )}
       </main>
+      <BottomNav />
     </div>
   )
 }
