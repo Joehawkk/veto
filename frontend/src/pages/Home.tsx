@@ -25,17 +25,20 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-bg flex flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-5 border-b border-border">
+      <header className="flex items-center justify-between px-6 py-5 bg-white border-b border-border">
         <div>
           <span className="text-primary font-black text-2xl tracking-widest">VETO</span>
-          <p className="text-muted text-xs">осознанные покупки</p>
+          <p className="text-muted text-xs mt-0.5">осознанные покупки</p>
         </div>
-        <Link to="/history" className="text-muted text-sm hover:text-white transition-colors flex items-center gap-1.5">
+        <Link
+          to="/history"
+          className="flex items-center gap-1.5 text-sm font-medium text-gray-dark hover:text-primary transition-colors"
+        >
           <span>📋</span><span>История</span>
         </Link>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-10 max-w-md mx-auto w-full gap-6">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-10 max-w-md mx-auto w-full gap-5">
 
         {/* Greeting */}
         {profile && (
@@ -46,8 +49,8 @@ export default function Home() {
 
         {/* Savings stats */}
         {hasSaved && (
-          <div className="w-full bg-primary/5 border border-primary/20 rounded-2xl p-5">
-            <p className="text-muted text-xs uppercase tracking-wider mb-3">Твой прогресс</p>
+          <div className="w-full bg-white border border-border rounded-2xl p-5 shadow-card">
+            <p className="text-muted text-xs uppercase tracking-wider font-semibold mb-3">Твой прогресс</p>
             <div className="flex items-end justify-between">
               <div>
                 <p className="text-primary font-black text-3xl leading-tight">
@@ -56,7 +59,7 @@ export default function Home() {
                 <p className="text-muted text-xs mt-1">сэкономлено всего</p>
               </div>
               <div className="text-right">
-                <p className="text-white font-black text-xl">{stats.stopped}</p>
+                <p className="text-dark font-black text-xl">{stats.stopped}</p>
                 <p className="text-muted text-xs">отказов</p>
               </div>
             </div>
@@ -66,27 +69,32 @@ export default function Home() {
         {/* Hero or form */}
         {!showForm ? (
           <div className="w-full flex flex-col items-center text-center gap-6">
-            <div>
-              <h1 className="text-4xl font-black text-white leading-tight mb-3">
-                Хочешь что-то<br />
-                <span className="text-primary">купить?</span>
-              </h1>
-              <p className="text-muted text-base leading-relaxed">
-                4 быстрых вопроса — и честный AI-вердикт.<br />
-                Помогаем не тратить деньги на эмоциях.
-              </p>
+            {/* Orange gradient hero block */}
+            <div className="w-full rounded-3xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #FD7203 0%, #F86D06 60%, #D4350E 100%)' }}>
+              <div className="px-8 py-10">
+                <p className="text-white/80 text-sm font-medium mb-3 uppercase tracking-widest">Перед покупкой</p>
+                <h1 className="text-4xl font-black text-white leading-tight mb-3">
+                  Хочешь что-то купить?
+                </h1>
+                <p className="text-white/75 text-sm leading-relaxed">
+                  4 быстрых вопроса — и честный AI-вердикт.<br />
+                  Помогаем не тратить деньги на эмоциях.
+                </p>
+              </div>
             </div>
 
             <button
               onClick={() => setShowForm(true)}
-              className="w-full bg-primary text-black font-black text-xl py-5 rounded-2xl shadow-neon-green hover:shadow-neon-green-lg active:scale-[0.97] transition-all"
+              className="w-full bg-primary text-white font-black text-lg py-5 rounded-2xl shadow-orange hover:shadow-orange-lg active:scale-[0.97] transition-all"
             >
               Хочу совершить покупку →
             </button>
 
             {stats.pending > 0 && (
-              <Link to="/history"
-                className="w-full border border-yellow-400/30 bg-yellow-400/5 text-yellow-400 font-medium py-3 rounded-xl text-sm text-center hover:bg-yellow-400/10 transition-colors">
+              <Link
+                to="/history"
+                className="w-full border border-[#FF9E30]/50 bg-[#FFDE8A]/30 text-[#F86D06] font-medium py-3 rounded-xl text-sm text-center hover:bg-[#FFDE8A]/50 transition-colors"
+              >
                 ⏳ {stats.pending} {stats.pending === 1 ? 'товар ждёт' : 'товара ждут'} решения
               </Link>
             )}
@@ -94,36 +102,43 @@ export default function Home() {
         ) : (
           <div className="w-full">
             <div className="flex items-center gap-3 mb-6">
-              <button onClick={() => setShowForm(false)} className="text-muted hover:text-white transition-colors">
+              <button onClick={() => setShowForm(false)} className="text-muted hover:text-dark transition-colors text-lg">
                 ←
               </button>
-              <h2 className="text-xl font-black text-white">Что хочешь купить?</h2>
+              <h2 className="text-xl font-black text-dark">Что хочешь купить?</h2>
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
-                <label className="text-muted text-xs font-medium block mb-1.5">Название товара</label>
+                <label className="text-muted text-xs font-semibold block mb-1.5 uppercase tracking-wide">Название товара</label>
                 <input
                   type="text" value={name} onChange={(e) => setName(e.target.value)}
                   placeholder="AirPods, кроссовки, курс..." required autoFocus
-                  className="w-full bg-card border border-border rounded-xl px-4 py-4 text-white placeholder-muted focus:outline-none focus:border-primary transition-colors text-base"
+                  className="w-full bg-white border border-border rounded-xl px-4 py-4 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-base shadow-card"
                 />
               </div>
               <div>
-                <label className="text-muted text-xs font-medium block mb-1.5">Стоимость</label>
+                <label className="text-muted text-xs font-semibold block mb-1.5 uppercase tracking-wide">Стоимость</label>
                 <div className="relative">
                   <input
                     type="number" value={price} onChange={(e) => setPrice(e.target.value)}
                     placeholder="0" required min={1}
-                    className="w-full bg-card border border-border rounded-xl pl-4 pr-12 py-4 text-white placeholder-muted focus:outline-none focus:border-primary transition-colors text-base"
+                    className="w-full bg-white border border-border rounded-xl pl-4 pr-12 py-4 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-base shadow-card"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted font-bold">₽</span>
                 </div>
               </div>
 
               {/* Discount toggle */}
-              <button type="button" onClick={() => setHasDiscount(!hasDiscount)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${hasDiscount ? 'border-yellow-400/50 bg-yellow-400/10 text-white' : 'border-border bg-card text-muted hover:text-white'}`}>
+              <button
+                type="button"
+                onClick={() => setHasDiscount(!hasDiscount)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left shadow-card ${
+                  hasDiscount
+                    ? 'border-[#FF9E30] bg-[#FFDE8A]/30 text-dark'
+                    : 'border-border bg-white text-muted hover:text-dark'
+                }`}
+              >
                 <span className="text-xl">🏷️</span>
                 <div className="flex-1">
                   <p className="text-sm font-bold leading-tight">{hasDiscount ? 'Есть скидка' : 'Скидки нет'}</p>
@@ -131,13 +146,15 @@ export default function Home() {
                     {hasDiscount ? 'Спросим: купил бы без скидки?' : 'Нажми, если товар по акции'}
                   </p>
                 </div>
-                <div className={`w-10 h-6 rounded-full transition-all flex items-center px-1 ${hasDiscount ? 'bg-yellow-400' : 'bg-border'}`}>
-                  <div className={`w-4 h-4 rounded-full bg-white transition-all ${hasDiscount ? 'translate-x-4' : 'translate-x-0'}`} />
+                <div className={`w-10 h-6 rounded-full transition-all flex items-center px-1 ${hasDiscount ? 'bg-primary' : 'bg-border'}`}>
+                  <div className={`w-4 h-4 rounded-full bg-white transition-all shadow-sm ${hasDiscount ? 'translate-x-4' : 'translate-x-0'}`} />
                 </div>
               </button>
 
-              <button type="submit"
-                className="w-full bg-primary text-black font-black text-lg py-4 rounded-xl shadow-neon-green active:scale-[0.98] transition-all mt-1">
+              <button
+                type="submit"
+                className="w-full bg-primary text-white font-black text-lg py-4 rounded-xl shadow-orange hover:shadow-orange-lg active:scale-[0.98] transition-all mt-1"
+              >
                 Начать проверку →
               </button>
             </form>

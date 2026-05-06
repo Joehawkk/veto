@@ -3,9 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getCurrent, setCheckResult, type CheckAnswers, type MoodValue, type ThoughtDuration } from '../lib/storage'
 import { getLocalVerdict } from '../lib/scoring'
 
-/* ── Fixed 4 questions ─────────────────────────── */
 type StepKey = 'needNow' | 'hasSimilar' | 'duration' | 'mood'
-
 const STEPS: StepKey[] = ['needNow', 'hasSimilar', 'duration', 'mood']
 
 const STEP_META: Record<StepKey, { title: string; subtitle: string; category: string; categoryColor: string }> = {
@@ -25,13 +23,13 @@ const STEP_META: Record<StepKey, { title: string; subtitle: string; category: st
     title: 'Как долго ты думал об этой покупке?',
     subtitle: 'Честно — когда впервые захотел?',
     category: 'ЛОГИКА',
-    categoryColor: 'text-blue-400 bg-blue-400/10',
+    categoryColor: 'text-[#F86D06] bg-[#FFDE8A]/50',
   },
   mood: {
     title: 'Как ты сейчас себя чувствуешь?',
     subtitle: 'Эмоции влияют на решения о покупках',
     category: 'ЭМОЦИИ',
-    categoryColor: 'text-yellow-400 bg-yellow-400/10',
+    categoryColor: 'text-secondary bg-secondary/10',
   },
 }
 
@@ -42,13 +40,13 @@ const DURATION_OPTIONS: { value: ThoughtDuration; label: string; icon: string; s
   { value: '3days', label: '3+ дня', icon: '📅', sub: 'давно думаю' },
 ]
 
-const MOOD_OPTIONS: { value: MoodValue; emoji: string; label: string; isGood: boolean }[] = [
-  { value: 'good', emoji: '😊', label: 'Хорошо', isGood: true },
-  { value: 'neutral', emoji: '😐', label: 'Нейтрально', isGood: true },
-  { value: 'sad', emoji: '😔', label: 'Грустно', isGood: false },
-  { value: 'angry', emoji: '😠', label: 'Злюсь', isGood: false },
-  { value: 'stressed', emoji: '😰', label: 'Стрессую', isGood: false },
-  { value: 'tired', emoji: '😴', label: 'Устал', isGood: false },
+const MOOD_OPTIONS: { value: MoodValue; emoji: string; label: string; good: boolean }[] = [
+  { value: 'good',     emoji: '😊', label: 'Хорошо',    good: true  },
+  { value: 'neutral',  emoji: '😐', label: 'Нейтрально',good: true  },
+  { value: 'sad',      emoji: '😔', label: 'Грустно',   good: false },
+  { value: 'angry',    emoji: '😠', label: 'Злюсь',     good: false },
+  { value: 'stressed', emoji: '😰', label: 'Стрессую',  good: false },
+  { value: 'tired',    emoji: '😴', label: 'Устал',     good: false },
 ]
 
 export default function Check() {
@@ -90,15 +88,20 @@ export default function Check() {
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
-      {/* Progress */}
+      {/* Progress bar */}
       <div className="w-full bg-border h-1">
-        <div className="bg-primary h-1 transition-all duration-500" style={{ width: `${progress}%` }} />
+        <div
+          className="h-1 transition-all duration-500"
+          style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #FD7203, #F86D06)' }}
+        />
       </div>
 
       <main className="flex-1 flex flex-col px-6 py-8 max-w-md mx-auto w-full">
         {/* Nav */}
         <div className="flex items-center justify-between mb-10">
-          <button onClick={goBack} className="text-muted hover:text-white transition-colors text-sm">← Назад</button>
+          <button onClick={goBack} className="text-muted hover:text-dark transition-colors text-sm font-medium">
+            ← Назад
+          </button>
           <p className="text-muted text-sm font-medium">Вопрос {step + 1} из {STEPS.length}</p>
           <div className="w-16" />
         </div>
@@ -108,23 +111,27 @@ export default function Check() {
           className="flex-1 flex flex-col justify-center transition-all duration-200"
           style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(-10px)' }}
         >
-          <div className="bg-card border border-border rounded-3xl p-8 mb-8">
+          <div className="bg-white border border-border rounded-3xl p-8 mb-8 shadow-card">
             <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-6 ${meta.categoryColor}`}>
               {meta.category}
             </span>
-            <h2 className="text-2xl font-black text-white leading-snug mb-3">{meta.title}</h2>
+            <h2 className="text-2xl font-black text-dark leading-snug mb-3">{meta.title}</h2>
             <p className="text-muted text-sm">{meta.subtitle}</p>
           </div>
 
           {/* Yes / No */}
           {(stepKey === 'needNow' || stepKey === 'hasSimilar') && (
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => advance({ [stepKey]: true })}
-                className="py-5 rounded-2xl border-2 border-primary/30 bg-primary/5 text-primary font-black text-lg hover:bg-primary/15 hover:border-primary active:scale-95 transition-all">
+              <button
+                onClick={() => advance({ [stepKey]: true })}
+                className="py-5 rounded-2xl border-2 border-primary/30 bg-primary/5 text-primary font-black text-lg hover:bg-primary/15 hover:border-primary active:scale-95 transition-all shadow-card"
+              >
                 ✅ Да
               </button>
-              <button onClick={() => advance({ [stepKey]: false })}
-                className="py-5 rounded-2xl border-2 border-border bg-card text-muted font-black text-lg hover:bg-border hover:text-white active:scale-95 transition-all">
+              <button
+                onClick={() => advance({ [stepKey]: false })}
+                className="py-5 rounded-2xl border-2 border-border bg-white text-gray-dark font-black text-lg hover:border-border-dark hover:text-dark active:scale-95 transition-all shadow-card"
+              >
                 ❌ Нет
               </button>
             </div>
@@ -134,10 +141,13 @@ export default function Check() {
           {stepKey === 'duration' && (
             <div className="grid grid-cols-2 gap-3">
               {DURATION_OPTIONS.map((opt) => (
-                <button key={opt.value} onClick={() => advance({ thoughtDuration: opt.value })}
-                  className="flex flex-col items-center gap-2 py-5 px-3 rounded-2xl border-2 border-border bg-card hover:border-primary hover:bg-primary/5 hover:text-white active:scale-95 transition-all">
+                <button
+                  key={opt.value}
+                  onClick={() => advance({ thoughtDuration: opt.value })}
+                  className="flex flex-col items-center gap-2 py-5 px-3 rounded-2xl border-2 border-border bg-white hover:border-primary hover:bg-primary/5 active:scale-95 transition-all shadow-card"
+                >
                   <span className="text-3xl">{opt.icon}</span>
-                  <span className="text-white font-black text-sm">{opt.label}</span>
+                  <span className="text-dark font-black text-sm">{opt.label}</span>
                   <span className="text-muted text-xs">{opt.sub}</span>
                 </button>
               ))}
@@ -148,10 +158,17 @@ export default function Check() {
           {stepKey === 'mood' && (
             <div className="grid grid-cols-3 gap-3">
               {MOOD_OPTIONS.map((opt) => (
-                <button key={opt.value} onClick={() => advance({ mood: opt.value })}
-                  className={`flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-all active:scale-95 ${opt.isGood ? 'border-primary/30 bg-primary/5 hover:border-primary hover:bg-primary/10' : 'border-border bg-card hover:border-secondary/50 hover:bg-secondary/5'}`}>
+                <button
+                  key={opt.value}
+                  onClick={() => advance({ mood: opt.value })}
+                  className={`flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-all active:scale-95 shadow-card ${
+                    opt.good
+                      ? 'border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10'
+                      : 'border-border bg-white hover:border-secondary/40 hover:bg-secondary/5'
+                  }`}
+                >
                   <span className="text-3xl">{opt.emoji}</span>
-                  <span className="text-xs font-bold text-muted">{opt.label}</span>
+                  <span className="text-xs font-bold text-gray-dark">{opt.label}</span>
                 </button>
               ))}
             </div>
@@ -160,10 +177,10 @@ export default function Check() {
       </main>
 
       {/* Bottom item card */}
-      <div className="sticky bottom-0 bg-bg border-t border-border px-6 py-4">
+      <div className="sticky bottom-0 bg-white border-t border-border px-6 py-4 shadow-[0_-2px_12px_rgba(6,6,6,0.06)]">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div>
-            <p className="text-white font-bold text-sm">{current.name}</p>
+            <p className="text-dark font-bold text-sm">{current.name}</p>
             <p className="text-muted text-xs">{current.hasDiscount ? '🏷️ Со скидкой' : 'Проверяем покупку'}</p>
           </div>
           <p className="text-primary font-black text-lg">{current.price.toLocaleString('ru')} ₽</p>
