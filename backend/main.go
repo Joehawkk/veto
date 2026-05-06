@@ -50,6 +50,7 @@ func main() {
 	auth := api.Group("/auth")
 	auth.Post("/register", h.Register)
 	auth.Post("/login", h.Login)
+	api.Post("/ai/check", h.CheckAI)
 
 	// Protected
 	p := api.Group("", middleware.AuthRequired(cfg.JWTSecret))
