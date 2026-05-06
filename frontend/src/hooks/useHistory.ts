@@ -1,8 +1,14 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { getHistory, addHistoryEntry, updateOutcome, setHistory, type HistoryEntry } from '../lib/storage'
 
 export function useHistory() {
   const [history, setHistoryState] = useState<HistoryEntry[]>(() => getHistory())
+
+  useEffect(() => {
+    const onAuthChange = () => setHistoryState(getHistory())
+    window.addEventListener('veto-auth-change', onAuthChange)
+    return () => window.removeEventListener('veto-auth-change', onAuthChange)
+  }, [])
 
   const refresh = useCallback(() => setHistoryState(getHistory()), [])
 

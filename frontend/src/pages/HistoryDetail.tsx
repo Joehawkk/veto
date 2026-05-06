@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { getHistory, updateOutcome, type HistoryEntry } from '../lib/storage'
+import { type HistoryEntry } from '../lib/storage'
 import { getVerdictMeta } from '../lib/scoring'
+import { useHistory } from '../hooks/useHistory'
 
 const OUTCOME = {
   stopped: { label: 'Отказался',        icon: '💚', color: 'text-primary' },
@@ -44,8 +45,8 @@ function verdictGradient(v: string) {
 export default function HistoryDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const history = getHistory()
-  const entry: HistoryEntry | undefined = history.find((e) => e.id === id)
+  const { history, setOutcome } = useHistory()
+  const entry = history.find((e) => e.id === id) as HistoryEntry | undefined
 
   if (!entry) {
     return (
@@ -67,8 +68,9 @@ export default function HistoryDetail() {
     day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
 
+  const entryId = entry.id
   function handleMark(outcome: 'stopped' | 'bought') {
-    updateOutcome(entry.id, outcome)
+    setOutcome(entryId, outcome)
     navigate('/history')
   }
 
