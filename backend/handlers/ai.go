@@ -45,9 +45,10 @@ type aiHistoryEntry struct {
 }
 
 type aiCheckResponse struct {
-	Verdict string `json:"verdict"`
-	Tip     string `json:"tip"`
-	Source  string `json:"source,omitempty"`
+	Verdict  string `json:"verdict"`
+	Tip      string `json:"tip"`
+	HobbyTip string `json:"hobby_tip,omitempty"`
+	Source   string `json:"source,omitempty"`
 }
 
 func (h *Handler) CheckAI(c *fiber.Ctx) error {
@@ -84,7 +85,7 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 				"content": buildAIPrompt(input),
 			},
 		},
-		"max_tokens":  220,
+		"max_tokens":  320,
 		"temperature": 0.6,
 	}
 
@@ -139,7 +140,39 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 }
 
 func buildFallbackAIResponse(input aiCheckRequest) aiCheckResponse {
+	cat := detectCategory(input.Name)
 	verdict := deriveAIVerdict(input)
+
+	// Специальные ответы для жизненно важных категорий
+	if cat == categoryMedicine {
+		tip := fmt.Sprintf("«%s» — это лекарство, бери без сомнений.", input.Name)
+		if input.Price > 3000 {
+			tip += " Цена высокая — уточни у фармацевта наличие более доступного аналога."
+		} else {
+			tip += " Здоровье важнее экономии."
+		}
+		return aiCheckResponse{Verdict: "go", Tip: tip, Source: "fallback"}
+	}
+
+	if cat == categoryFood {
+		tip := fmt.Sprintf("«%s» — базовый продукт, покупай смело.", input.Name)
+		if input.HasDiscount {
+			tip += " Со скидкой — тем более хороший момент."
+		}
+		return aiCheckResponse{Verdict: "go", Tip: tip, Source: "fallback"}
+	}
+
+	if cat == categoryBasicClothing && input.Price <= 1500 {
+		tip := fmt.Sprintf("«%s» по %.0f ₽ — базовая необходимость, всё ок.", input.Name, input.Price)
+		return aiCheckResponse{Verdict: "go", Tip: tip, Source: "fallback"}
+	}
+
+	if cat == categoryEssentialHygiene {
+		tip := fmt.Sprintf("«%s» — предмет первой необходимости, бери.", input.Name)
+		return aiCheckResponse{Verdict: "go", Tip: tip, Source: "fallback"}
+	}
+
+	// Общая логика для остальных товаров
 	reasons := make([]string, 0, 5)
 
 	if isRiskyTime() {
@@ -163,7 +196,6 @@ func buildFallbackAIResponse(input aiCheckRequest) aiCheckResponse {
 	if input.Profile != nil && strings.TrimSpace(input.Profile.Goal) != "" {
 		reasons = append(reasons, fmt.Sprintf("эти %.0f ₽ можно сохранить для цели «%s»", input.Price, input.Profile.Goal))
 	}
-
 	if len(reasons) == 0 {
 		reasons = append(reasons, "по твоим ответам решение выглядит достаточно обдуманным")
 	}
@@ -171,12 +203,14 @@ func buildFallbackAIResponse(input aiCheckRequest) aiCheckResponse {
 	var nextStep string
 	switch verdict {
 	case "go":
-		nextStep = "Если берешь, просто проверь итоговую цену и что эта вещь реально пригодится в ближайшее время."
+		nextStep = "Если берёшь, проверь итоговую цену и убедись, что вещь реально нужна прямо сейчас."
 	case "wait":
-		nextStep = "Дай себе хотя бы сутки и проверь, останется ли это желание таким же уверенным завтра."
+		nextStep = "Дай себе хотя бы сутки и проверь, останется ли желание таким же сильным завтра."
 	default:
-		nextStep = "Сейчас разумнее отказаться и оставить деньги на более важную цель или действительно нужную покупку."
+		nextStep = "Сейчас разумнее отказаться и сохранить деньги на более важную цель или действительно нужную покупку."
 	}
+
+	hobbyTip := buildFallbackHobbyTip(input.Profile, input.Price, verdict)
 
 	return aiCheckResponse{
 		Verdict: verdict,
@@ -185,11 +219,163 @@ func buildFallbackAIResponse(input aiCheckRequest) aiCheckResponse {
 			buildReasonSentence(reasons),
 			nextStep,
 		), " "),
-		Source: "fallback",
+		HobbyTip: hobbyTip,
+		Source:   "fallback",
 	}
 }
 
+// buildFallbackHobbyTip возвращает предложение альтернативы по хобби при wait/veto.
+func buildFallbackHobbyTip(profile *aiCheckProfile, price float64, verdict string) string {
+	if verdict == "go" {
+		return ""
+	}
+	if profile == nil || len(profile.Interests) == 0 {
+		return ""
+	}
+
+	type priceRange struct {
+		max  float64
+		tips map[string]string
+	}
+
+	ranges := []priceRange{
+		{500, map[string]string{
+			"Игры":           "за эту сумму можно взять инди-игру в Steam — там часто топовые тайтлы за 200–500 ₽",
+			"Музыка":         "хватит на месяц стримингового сервиса с хорошей музыкой без рекламы",
+			"Мода":           "загляни на Авито или Vinted — за эту сумму найдётся крутая вещь secondhand",
+			"Технологии":     "купи хорошую техническую книгу или доступ к онлайн-курсу на Stepik",
+			"Спорт":          "на эту сумму можно взять разовое занятие или пробный абонемент в зал",
+			"Книги":          "купи бумажную книгу или оформи подписку Bookmate на месяц",
+			"Путешествия":    "отложи — это первый шаг к новой поездке, даже маленькая сумма в копилке считается",
+			"Еда":            "попробуй новый ресторан или купи ингредиенты для блюда, которое давно хотел приготовить",
+			"Творчество":     "купи новые скетчбуки, краски или другие материалы для любимого хобби",
+			"Кино и сериалы": "хватит на подписку стримингового сервиса с огромным каталогом фильмов",
+		}},
+		{2000, map[string]string{
+			"Игры":           "за эту сумму можно взять AAA-игру на распродаже или несколько инди-хитов",
+			"Музыка":         "хватит на качественные наушники для бюджета или несколько месяцев стриминга",
+			"Мода":           "отличный вариант — найти качественную вещь на Авито или в секонд-хенде",
+			"Технологии":     "можно купить курс по интересующей теме или несколько профессиональных книг",
+			"Спорт":          "месячный абонемент в зал или набор для домашних тренировок — резинки, коврик",
+			"Книги":          "купи 3–4 книги любимых авторов или годовую подписку на электронную библиотеку",
+			"Путешествия":    "начни копить на следующую поездку — эта сумма уже ощутимый вклад",
+			"Еда":            "закажи набор продуктов для приготовления нескольких новых блюд из разных кухонь",
+			"Творчество":     "купи качественные материалы: хорошие кисти, холст или набор для нового хобби",
+			"Кино и сериалы": "возьми годовую подписку на стриминг или купи коллекционное издание любимого фильма",
+		}},
+		{10000, map[string]string{
+			"Игры":           "за эту сумму реально взять несколько новинок или DLC к любимой игре",
+			"Музыка":         "хватит на хорошие проводные наушники или колонку для дома",
+			"Мода":           "отличный бюджет для качественной базовой вещи или аксессуара на долгие годы",
+			"Технологии":     "можно купить крутой технический гаджет или полноценный обучающий курс",
+			"Спорт":          "купи качественный спортивный инвентарь или несколько месяцев тренировок с тренером",
+			"Книги":          "собери библиотеку из 10–15 книг — это инвестиция в знания на годы",
+			"Путешествия":    "уже серьёзная сумма для короткого трипа внутри страны — добавь и езжай",
+			"Еда":            "закажи кулинарный мастер-класс или купи профессиональный кухонный инструмент",
+			"Творчество":     "инвестируй в качественные инструменты: хорошая камера, планшет для рисования",
+			"Кино и сериалы": "купи саундбар или улучши домашний кинотеатр для лучшего опыта просмотра",
+		}},
+		{1e18, map[string]string{
+			"Игры":           "за эту сумму можно взять игровые аксессуары, геймпад или обновить периферию",
+			"Музыка":         "вложи в качественный звук — наушники или колонка изменят восприятие музыки",
+			"Мода":           "купи одну вещь, которая будет служить годами — инвестиция в качество",
+			"Технологии":     "это бюджет для серьёзного гаджета или профессионального оборудования",
+			"Спорт":          "купи качественное снаряжение для любимого вида спорта — это надолго",
+			"Книги":          "собери полную коллекцию любимого автора или серию книг по интересующей теме",
+			"Путешествия":    "это уже приличный вклад в поездку мечты — откладывай регулярно",
+			"Еда":            "купи профессиональный кухонный прибор, который будет радовать каждый день",
+			"Творчество":     "вложи в серьёзный инструмент для творчества — это окупится сторицей",
+			"Кино и сериалы": "улучши домашний кинотеатр: новый монитор, проектор или саундсистема",
+		}},
+	}
+
+	interest := profile.Interests[0]
+
+	for _, r := range ranges {
+		if price <= r.max {
+			if tip, ok := r.tips[interest]; ok {
+				return tip
+			}
+			return fmt.Sprintf("отложи %.0f ₽ на что-то, что действительно поддержит твоё увлечение «%s»", price, interest)
+		}
+	}
+
+	return ""
+}
+
+type itemCategory int
+
+const (
+	categoryGeneral         itemCategory = iota
+	categoryMedicine                     // лекарства — всегда go
+	categoryFood                         // базовая еда/вода — почти всегда go
+	categoryBasicClothing                // носки, бельё, термобельё — go если цена разумная
+	categoryEssentialHygiene             // зубная паста, мыло — go если цена разумная
+)
+
+func detectCategory(name string) itemCategory {
+	lower := strings.ToLower(name)
+
+	medicine := []string{
+		"лекарств", "таблетк", "витамин", "антибиотик", "анальгин", "ибупрофен",
+		"аспирин", "мазь", "капли глазные", "капли ушные", "сироп от", "бинт",
+		"пластырь", "жаропонижающ", "обезболивающ", "антисептик", "перекись",
+		"зелёнка", "зеленка", "активированный уголь", "но-шпа", "парацетамол",
+		"нурофен", "колдрекс", "терафлю", "медикамент", "препарат",
+	}
+	food := []string{
+		"хлеб", "молоко", "яйц", "гречка", "рис ", "рис,", "картошка", "картофель",
+		"макарон", "вода питьевая", "вода минеральная", " вода", "мясо", "куриц",
+		"рыба", "соль ", "сахар", "масло подсолнечное", "масло сливочное",
+		"кефир", "творог", "сметана", "крупа", "овощ", "фрукт",
+	}
+	basicClothing := []string{
+		"носки", "носок", "трусы", "трусов", "нижнее бельё", "нижнее белье",
+		"нательная майка", "нательные", "термобельё", "термобелье", "колготки",
+	}
+	hygiene := []string{
+		"зубная паста", "зубной порошок", "мыло туалетное", "шампунь", "гель для душа",
+		"дезодорант", "прокладки", "тампоны", "туалетная бумага",
+	}
+
+	for _, kw := range medicine {
+		if strings.Contains(lower, kw) {
+			return categoryMedicine
+		}
+	}
+	for _, kw := range food {
+		if strings.Contains(lower, kw) {
+			return categoryFood
+		}
+	}
+	for _, kw := range basicClothing {
+		if strings.Contains(lower, kw) {
+			return categoryBasicClothing
+		}
+	}
+	for _, kw := range hygiene {
+		if strings.Contains(lower, kw) {
+			return categoryEssentialHygiene
+		}
+	}
+	return categoryGeneral
+}
+
 func deriveAIVerdict(input aiCheckRequest) string {
+	cat := detectCategory(input.Name)
+
+	// Лекарства — всегда go
+	if cat == categoryMedicine {
+		return "go"
+	}
+	// Еда, базовая гигиена, базовая одежда при низкой цене — go
+	if cat == categoryFood || cat == categoryEssentialHygiene {
+		return "go"
+	}
+	if cat == categoryBasicClothing && input.Price <= 1500 {
+		return "go"
+	}
+
 	score := 0
 
 	if input.Answers.NeedNow {
@@ -309,8 +495,27 @@ func buildAIPrompt(input aiCheckRequest) string {
 		historySummary = strings.Join(items, "; ")
 	}
 
+	hobbyInstruction := ""
+	if input.Profile != nil && len(input.Profile.Interests) > 0 {
+		hobbyInstruction = fmt.Sprintf(
+			`"hobby_tip": "1 предложение: что конкретно купить по интересам [%s] примерно за %.0f ₽ вместо этой покупки. Только для wait/veto — для go верни пустую строку."`,
+			strings.Join(input.Profile.Interests, ", "),
+			input.Price,
+		)
+	} else {
+		hobbyInstruction = `"hobby_tip": ""`
+	}
+
 	return fmt.Sprintf(`Ты помощник Veto. Отвечай строго на русском языке.
-Нужен только JSON без markdown и пояснений: {"verdict":"go|wait|veto","tip":"2-3 коротких предложения"}.
+Нужен только JSON без markdown и пояснений:
+{"verdict":"go|wait|veto","tip":"2-3 коротких предложения", %s}.
+
+ВАЖНЫЕ ПРАВИЛА КАТЕГОРИЙ — их нарушать нельзя:
+1. Лекарства, медикаменты, препараты → verdict ВСЕГДА "go". Tip: одобри покупку, при дорогой цене предложи спросить аналог.
+2. Базовые продукты (хлеб, молоко, вода, крупа, яйца, мясо и т.п.) → verdict ВСЕГДА "go". Tip: одобри коротко.
+3. Предметы базовой гигиены (зубная паста, мыло, шампунь, прокладки) → verdict ВСЕГДА "go".
+4. Базовая одежда (носки, трусы, нижнее бельё, термобельё) при цене до 1500 ₽ → verdict ВСЕГДА "go".
+5. Дорогой брендовый товар, гаджеты, развлечения → оценивай по обычным критериям.
 
 Покупка: %s
 Цена: %.0f ₽
@@ -323,7 +528,8 @@ func buildAIPrompt(input aiCheckRequest) string {
 Профиль: %s
 История: %s
 
-Учитывай риск импульсивной покупки вечером, ночью, при стрессе и усталости. Совет должен быть честным, коротким и без морализаторства.`,
+Для НЕ-необходимых товаров: учитывай риск импульсивной покупки вечером, ночью, при стрессе и усталости. Совет — честный, короткий, без морализаторства.`,
+		hobbyInstruction,
 		input.Name,
 		input.Price,
 		input.HasDiscount,
@@ -357,6 +563,7 @@ func parseAIContent(content, fallbackVerdict string) (aiCheckResponse, bool) {
 	if parsed.Tip == "" {
 		return aiCheckResponse{}, false
 	}
+	parsed.HobbyTip = strings.TrimSpace(parsed.HobbyTip)
 	return parsed, true
 }
 
