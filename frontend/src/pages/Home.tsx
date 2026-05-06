@@ -3,11 +3,13 @@ import { useNavigate, Link } from 'react-router-dom'
 import { setCurrent } from '../lib/storage'
 import { useHistory } from '../hooks/useHistory'
 import { useProfile } from '../hooks/useProfile'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function Home() {
   const navigate = useNavigate()
   const { stats } = useHistory()
   const { profile } = useProfile()
+  const { user, logout } = useAuth()
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
@@ -20,7 +22,10 @@ export default function Home() {
     navigate('/check')
   }
 
-  const hasSaved = stats.saved > 0 || stats.stopped > 0
+  const totalSaved = stats.saved
+  const vetoCount = stats.stopped
+  const hasSaved = totalSaved > 0 || vetoCount > 0
+  const displayName = user?.display_name || user?.username || ''
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
@@ -30,22 +35,36 @@ export default function Home() {
           <span className="text-primary font-black text-2xl tracking-widest">VETO</span>
           <p className="text-muted text-xs mt-0.5">осознанные покупки</p>
         </div>
-        <Link
-          to="/history"
-          className="flex items-center gap-1.5 text-sm font-medium text-gray-dark hover:text-primary transition-colors"
-        >
-          <span>📋</span><span>История</span>
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/history"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-dark hover:text-primary transition-colors"
+          >
+            <span>📋</span><span>История</span>
+          </Link>
+          <Link
+            to="/accounts"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-dark hover:text-primary transition-colors"
+          >
+            <span>👥</span><span>Акки</span>
+          </Link>
+          <button
+            onClick={logout}
+            className="text-sm text-muted hover:text-secondary transition-colors"
+            title="Выйти"
+          >
+            Выйти
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-10 max-w-md mx-auto w-full gap-5">
 
         {/* Greeting */}
-        {profile && (
-          <p className="text-muted text-sm self-start">
-            Привет{profile.goal ? ` — ты здесь, чтобы "${profile.goal.toLowerCase()}"` : ''} 👋
-          </p>
-        )}
+        <p className="text-muted text-sm self-start">
+          {displayName ? `Привет, ${displayName}` : 'Привет'}
+          {profile?.goal ? ` — ты здесь, чтобы "${profile.goal.toLowerCase()}"` : ''} 👋
+        </p>
 
         {/* Savings stats */}
         {hasSaved && (
@@ -54,12 +73,12 @@ export default function Home() {
             <div className="flex items-end justify-between">
               <div>
                 <p className="text-primary font-black text-3xl leading-tight">
-                  {stats.saved.toLocaleString('ru')} ₽
+                  {totalSaved.toLocaleString('ru')} ₽
                 </p>
                 <p className="text-muted text-xs mt-1">сэкономлено всего</p>
               </div>
               <div className="text-right">
-                <p className="text-dark font-black text-xl">{stats.stopped}</p>
+                <p className="text-dark font-black text-xl">{vetoCount}</p>
                 <p className="text-muted text-xs">отказов</p>
               </div>
             </div>

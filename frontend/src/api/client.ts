@@ -22,7 +22,6 @@ client.interceptors.response.use(
 
 export interface Goal {
   id: number
-  user_id: number
   title: string
   target_amount: number
   current_amount: number
@@ -30,9 +29,18 @@ export interface Goal {
   created_at: string
 }
 
+export interface VetoItem {
+  id: number
+  goal_id: number | null
+  amount: number
+  description: string
+  created_at: string
+}
+
 export interface FeedItem {
   id: number
   username: string
+  display_name: string
   amount: number
   description: string
   created_at: string
@@ -40,28 +48,42 @@ export interface FeedItem {
   has_respected: boolean
 }
 
-export interface Profile {
-  id: number
-  email: string
+export type Profile = UserProfile
+
+export interface UserProfile {
+  id: string
   username: string
+  display_name: string
+  email: string | null
+  phone: string | null
+  avatar_url: string | null
   total_saved: number
   created_at: string
-  active_goal: Goal | null
-  goals: Goal[]
+  active_goal?: Goal | null
+  goals?: Goal[]
+}
+
+export interface AccountUser {
+  id: string
+  username: string
+  display_name: string
+  total_saved: number
+  created_at: string
+  veto_count: number
 }
 
 export interface Group {
   id: number
   name: string
   invite_code: string
-  owner_id: number
+  owner_id: string
   member_count: number
   group_total: number
   is_owner: boolean
 }
 
 export interface GroupDetail extends Group {
-  members: { id: number; username: string; total_saved: number; rank: number; is_me: boolean }[]
+  members: { id: string; username: string; display_name: string; total_saved: number; rank: number; is_me: boolean }[]
 }
 
 export interface Notification {
@@ -74,13 +96,18 @@ export interface Notification {
 
 export const api = {
   auth: {
-    register: (data: { email: string; password: string; username: string }) =>
-      client.post<{ token: string; user_id: number; username: string }>('/auth/register', data),
-    login: (data: { email: string; password: string }) =>
-      client.post<{ token: string; user_id: number; username: string }>('/auth/login', data),
+    register: (data: { username: string; display_name: string; password: string }) =>
+      client.post<{ token: string; user_id: string; username: string; display_name: string }>('/auth/register', data),
+    login: (data: { username: string; password: string }) =>
+      client.post<{ token: string; user_id: string; username: string; display_name: string }>('/auth/login', data),
+  },
+  me: {
+    get: () => client.get<UserProfile>('/me'),
+    update: (data: { display_name?: string; email?: string | null; phone?: string | null; avatar_url?: string | null }) =>
+      client.patch<UserProfile>('/profile', data),
   },
   profile: {
-    get: () => client.get<Profile>('/profile'),
+    get: () => client.get<UserProfile>('/profile'),
     delete: () => client.delete('/profile'),
   },
   goals: {
@@ -89,6 +116,7 @@ export const api = {
     update: (id: number, data: { title: string; target_amount: number }) => client.put(`/goals/${id}`, data),
   },
   vetos: {
+    list: () => client.get<VetoItem[]>('/vetos'),
     create: (data: { amount: number; description: string; goal_id?: number | null }) =>
       client.post<{ id: number; success: boolean; goal_completed: boolean }>('/vetos', data),
     moveGoal: (vetoId: number, goalId: number | null) =>
@@ -111,6 +139,9 @@ export const api = {
   notifications: {
     get: () => client.get<{ items: Notification[]; unread: number }>('/notifications'),
     markRead: () => client.post('/notifications/read'),
+  },
+  users: {
+    list: () => client.get<AccountUser[]>('/users'),
   },
 }
 
