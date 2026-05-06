@@ -7,6 +7,7 @@ import Onboarding from './pages/Onboarding'
 import Check from './pages/Check'
 import Result from './pages/Result'
 import History from './pages/History'
+import HistoryDetail from './pages/HistoryDetail'
 
 function HomeGuard() {
   const navigate = useNavigate()
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/check" element={<Check />} />
         <Route path="/result" element={<Result />} />
         <Route path="/history" element={<History />} />
+        <Route path="/history/:id" element={<HistoryDetail />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
