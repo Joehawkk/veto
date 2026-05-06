@@ -26,7 +26,6 @@ export function getLocalVerdict(answers: CheckAnswers): Verdict {
   if (!answers.hasSimilar) score += 1
   score += DURATION_SCORE[answers.thoughtDuration] ?? 0
   if (GOOD_MOODS.has(answers.mood)) score += 1
-  // Max 5 points
   if (score >= 4) return 'go'
   if (score >= 2) return 'wait'
   return 'veto'
@@ -40,15 +39,15 @@ export function getVerdictMeta(verdict: Verdict): VerdictMeta {
       icon: '✅',
       bg: 'bg-primary/10 border-primary/30',
       text: 'text-primary',
-      badge: 'bg-primary text-black',
+      badge: 'bg-primary text-white',
     },
     wait: {
       verdict: 'wait',
       label: 'Подожди',
       icon: '⏳',
-      bg: 'bg-yellow-500/10 border-yellow-500/30',
-      text: 'text-yellow-400',
-      badge: 'bg-yellow-400 text-black',
+      bg: 'bg-[#FFDE8A]/40 border-[#FF9E30]/40',
+      text: 'text-[#F86D06]',
+      badge: 'bg-[#FF9E30] text-white',
     },
     veto: {
       verdict: 'veto',

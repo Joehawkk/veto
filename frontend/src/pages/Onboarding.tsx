@@ -36,10 +36,13 @@ const INTERESTS = [
 
 function Bar({ step }: { step: number }) {
   return (
-    <div className="w-full bg-border rounded-full h-1 mb-10">
+    <div className="w-full bg-border rounded-full h-1.5 mb-10">
       <div
-        className="bg-primary h-1 rounded-full transition-all duration-500"
-        style={{ width: `${(step / TOTAL) * 100}%` }}
+        className="h-1.5 rounded-full transition-all duration-500"
+        style={{
+          width: `${(step / TOTAL) * 100}%`,
+          background: 'linear-gradient(90deg, #FD7203, #F86D06)',
+        }}
       />
     </div>
   )
@@ -84,7 +87,10 @@ export default function Onboarding() {
   )
 
   const back = (to: number) => (
-    <button onClick={() => setStep(to)} className="flex-1 border border-border text-muted py-4 rounded-xl font-medium hover:text-white transition-colors">
+    <button
+      onClick={() => setStep(to)}
+      className="flex-1 border border-border bg-white text-gray-dark py-4 rounded-xl font-medium hover:border-border-dark transition-colors shadow-card"
+    >
       ← Назад
     </button>
   )
@@ -98,19 +104,30 @@ export default function Onboarding() {
         {/* Step 1 — Зачем здесь */}
         {step === 1 && (
           <div>
-            <h2 className="text-2xl font-black text-white mb-1">Зачем ты здесь?</h2>
+            <h2 className="text-2xl font-black text-dark mb-1">Зачем ты здесь?</h2>
             <p className="text-muted text-sm mb-8">Выбери, что тебе ближе всего</p>
             <div className="flex flex-col gap-3 mb-8">
               {GOALS.map((g) => (
-                <button key={g.value} onClick={() => setGoal(g.value)}
-                  className={`flex items-center gap-4 px-5 py-4 rounded-2xl border text-left transition-all ${goal === g.value ? 'border-primary bg-primary/10 text-white' : 'border-border bg-card text-muted hover:text-white'}`}>
+                <button
+                  key={g.value}
+                  onClick={() => setGoal(g.value)}
+                  className={`flex items-center gap-4 px-5 py-4 rounded-2xl border text-left transition-all shadow-card ${
+                    goal === g.value
+                      ? 'border-primary bg-primary/10 text-dark'
+                      : 'border-border bg-white text-gray-dark hover:border-primary/40'
+                  }`}
+                >
                   <span className="text-2xl shrink-0">{g.icon}</span>
                   <span className="font-medium text-sm leading-snug">{g.value}</span>
+                  {goal === g.value && <span className="ml-auto text-primary shrink-0">✓</span>}
                 </button>
               ))}
             </div>
-            <button onClick={() => setStep(2)} disabled={!goal}
-              className="w-full bg-primary text-black font-black py-4 rounded-xl disabled:opacity-40">
+            <button
+              onClick={() => setStep(2)}
+              disabled={!goal}
+              className="w-full bg-primary text-white font-black py-4 rounded-xl shadow-orange disabled:opacity-40 disabled:shadow-none transition-all"
+            >
               Далее →
             </button>
           </div>
@@ -119,21 +136,32 @@ export default function Onboarding() {
         {/* Step 2 — Триггеры */}
         {step === 2 && (
           <div>
-            <h2 className="text-2xl font-black text-white mb-1">Что заставляет тебя покупать?</h2>
+            <h2 className="text-2xl font-black text-dark mb-1">Что заставляет тебя покупать?</h2>
             <p className="text-muted text-sm mb-8">Главная причина импульсных трат</p>
             <div className="flex flex-col gap-3 mb-8">
               {TRIGGERS.map((t) => (
-                <button key={t.value} onClick={() => setTrigger(t.value)}
-                  className={`flex items-center gap-4 px-5 py-4 rounded-2xl border text-left transition-all ${trigger === t.value ? 'border-primary bg-primary/10 text-white' : 'border-border bg-card text-muted hover:text-white'}`}>
+                <button
+                  key={t.value}
+                  onClick={() => setTrigger(t.value)}
+                  className={`flex items-center gap-4 px-5 py-4 rounded-2xl border text-left transition-all shadow-card ${
+                    trigger === t.value
+                      ? 'border-primary bg-primary/10 text-dark'
+                      : 'border-border bg-white text-gray-dark hover:border-primary/40'
+                  }`}
+                >
                   <span className="text-2xl shrink-0">{t.icon}</span>
                   <span className="font-medium text-sm leading-snug">{t.value}</span>
+                  {trigger === t.value && <span className="ml-auto text-primary shrink-0">✓</span>}
                 </button>
               ))}
             </div>
             <div className="flex gap-3">
               {back(1)}
-              <button onClick={() => setStep(3)} disabled={!trigger}
-                className="flex-1 bg-primary text-black font-black py-4 rounded-xl disabled:opacity-40">
+              <button
+                onClick={() => setStep(3)}
+                disabled={!trigger}
+                className="flex-1 bg-primary text-white font-black py-4 rounded-xl shadow-orange disabled:opacity-40 disabled:shadow-none transition-all"
+              >
                 Далее →
               </button>
             </div>
@@ -143,22 +171,39 @@ export default function Onboarding() {
         {/* Step 3 — Интересы */}
         {step === 3 && (
           <div>
-            <h2 className="text-2xl font-black text-white mb-1">Твои интересы</h2>
+            <h2 className="text-2xl font-black text-dark mb-1">Твои интересы</h2>
             <p className="text-muted text-sm mb-2">Выбери до 4 — AI будет советовать альтернативы</p>
             <p className="text-primary text-xs font-bold mb-6">Выбрано: {interests.length} / 4</p>
             <div className="grid grid-cols-2 gap-2 mb-8">
-              {INTERESTS.map((i) => (
-                <button key={i.value} onClick={() => toggleInterest(i.value)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${interests.includes(i.value) ? 'border-primary bg-primary/10 text-white' : 'border-border bg-card text-muted hover:text-white'} ${!interests.includes(i.value) && interests.length >= 4 ? 'opacity-40 cursor-not-allowed' : ''}`}>
-                  <span className="text-xl">{i.icon}</span>
-                  <span className="font-medium text-sm">{i.value}</span>
-                </button>
-              ))}
+              {INTERESTS.map((i) => {
+                const selected = interests.includes(i.value)
+                const disabled = !selected && interests.length >= 4
+                return (
+                  <button
+                    key={i.value}
+                    onClick={() => toggleInterest(i.value)}
+                    disabled={disabled}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all shadow-card ${
+                      selected
+                        ? 'border-primary bg-primary/10 text-dark'
+                        : disabled
+                        ? 'border-border bg-white text-muted opacity-40 cursor-not-allowed'
+                        : 'border-border bg-white text-gray-dark hover:border-primary/40'
+                    }`}
+                  >
+                    <span className="text-xl">{i.icon}</span>
+                    <span className="font-medium text-sm">{i.value}</span>
+                  </button>
+                )
+              })}
             </div>
             <div className="flex gap-3">
               {back(2)}
-              <button onClick={() => setStep(4)} disabled={interests.length === 0}
-                className="flex-1 bg-primary text-black font-black py-4 rounded-xl disabled:opacity-40">
+              <button
+                onClick={() => setStep(4)}
+                disabled={interests.length === 0}
+                className="flex-1 bg-primary text-white font-black py-4 rounded-xl shadow-orange disabled:opacity-40 disabled:shadow-none transition-all"
+              >
                 Далее →
               </button>
             </div>
@@ -168,18 +213,24 @@ export default function Onboarding() {
         {/* Step 4 — Трата в месяц */}
         {step === 4 && (
           <div>
-            <h2 className="text-2xl font-black text-white mb-1">Сколько уходит спонтанно?</h2>
+            <h2 className="text-2xl font-black text-dark mb-1">Сколько уходит спонтанно?</h2>
             <p className="text-muted text-sm mb-8">В месяц, примерно</p>
-            <div className="text-center mb-6">
-              <p className="text-primary font-black text-4xl">{monthlySpend.toLocaleString('ru')} ₽</p>
-              <p className="text-muted text-xs mt-1">в месяц</p>
+            <div className="bg-white border border-border rounded-2xl p-6 text-center mb-6 shadow-card">
+              <p className="text-primary font-black text-5xl">{monthlySpend.toLocaleString('ru')}</p>
+              <p className="text-muted text-sm mt-2 font-medium">₽ в месяц</p>
             </div>
-            <input type="range" min={0} max={50000} step={500} value={monthlySpend}
+            <input
+              type="range" min={0} max={50000} step={500} value={monthlySpend}
               onChange={(e) => setMonthlySpend(Number(e.target.value))}
-              className="w-full mb-10 accent-primary" />
+              className="w-full mb-10"
+              style={{ accentColor: '#FD7203' }}
+            />
             <div className="flex gap-3">
               {back(3)}
-              <button onClick={() => setStep(5)} className="flex-1 bg-primary text-black font-black py-4 rounded-xl">
+              <button
+                onClick={() => setStep(5)}
+                className="flex-1 bg-primary text-white font-black py-4 rounded-xl shadow-orange transition-all"
+              >
                 Далее →
               </button>
             </div>
@@ -189,28 +240,38 @@ export default function Onboarding() {
         {/* Step 5 — Цель накоплений */}
         {step === 5 && (
           <div>
-            <h2 className="text-2xl font-black text-white mb-1">Есть цель накоплений?</h2>
+            <h2 className="text-2xl font-black text-dark mb-1">Есть цель накоплений?</h2>
             <p className="text-muted text-sm mb-8">Необязательно — можно пропустить</p>
             <div className="flex flex-col gap-4 mb-8">
               <div>
-                <label className="text-muted text-xs font-medium block mb-1.5">Сумма (₽)</label>
-                <input type="number" value={savingsTarget} onChange={(e) => setSavingsTarget(e.target.value)}
+                <label className="text-muted text-xs font-semibold block mb-1.5 uppercase tracking-wide">Сумма (₽)</label>
+                <input
+                  type="number" value={savingsTarget} onChange={(e) => setSavingsTarget(e.target.value)}
                   placeholder="например, 50 000" min={1}
-                  className="w-full bg-card border border-border rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:border-primary transition-colors" />
+                  className="w-full bg-white border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-card"
+                />
               </div>
               <div>
-                <label className="text-muted text-xs font-medium block mb-1.5">За сколько месяцев?</label>
-                <input type="number" value={savingsMonths} onChange={(e) => setSavingsMonths(e.target.value)}
+                <label className="text-muted text-xs font-semibold block mb-1.5 uppercase tracking-wide">За сколько месяцев?</label>
+                <input
+                  type="number" value={savingsMonths} onChange={(e) => setSavingsMonths(e.target.value)}
                   placeholder="например, 4" min={1} max={60}
-                  className="w-full bg-card border border-border rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:border-primary transition-colors" />
+                  className="w-full bg-white border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-card"
+                />
               </div>
             </div>
             <div className="flex flex-col gap-3">
-              <button onClick={() => finish(false)} className="w-full bg-primary text-black font-black py-4 rounded-xl">
+              <button
+                onClick={() => finish(false)}
+                className="w-full bg-primary text-white font-black py-4 rounded-xl shadow-orange transition-all"
+              >
                 Начать →
               </button>
               {back(4)}
-              <button onClick={() => finish(true)} className="w-full text-muted text-sm py-2 hover:text-white transition-colors">
+              <button
+                onClick={() => finish(true)}
+                className="w-full text-muted text-sm py-2 hover:text-dark transition-colors"
+              >
                 Пропустить
               </button>
             </div>
