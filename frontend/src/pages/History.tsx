@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useHistory } from '../hooks/useHistory'
 import { type HistoryEntry } from '../lib/storage'
 import { getVerdictMeta } from '../lib/scoring'
@@ -21,6 +21,7 @@ function getTimeLeft(deadline: string): string {
 }
 
 function Card({ entry, onOutcome }: { entry: HistoryEntry; onOutcome: (id: string, o: 'stopped' | 'bought') => void }) {
+  const navigate = useNavigate()
   const v = getVerdictMeta(entry.aiVerdict)
   const o = OUTCOME[entry.outcome]
   const isPending = entry.outcome === 'pending'
@@ -30,7 +31,10 @@ function Card({ entry, onOutcome }: { entry: HistoryEntry; onOutcome: (id: strin
   const date = new Date(entry.createdAt).toLocaleDateString('ru', { day: 'numeric', month: 'short' })
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-4">
+    <div
+      className="bg-card border border-border rounded-2xl p-4 cursor-pointer hover:border-primary/40 transition-colors"
+      onClick={() => navigate(`/history/${entry.id}`)}
+    >
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex-1 min-w-0">
           <p className="text-white font-bold truncate">{entry.name}</p>
@@ -38,7 +42,10 @@ function Card({ entry, onOutcome }: { entry: HistoryEntry; onOutcome: (id: strin
             {date}{entry.hasDiscount && <span className="ml-2 text-yellow-400">🏷️</span>}
           </p>
         </div>
-        <p className={`font-black shrink-0 ${v.text}`}>{entry.price.toLocaleString('ru')} ₽</p>
+        <div className="flex items-center gap-2 shrink-0">
+          <p className={`font-black ${v.text}`}>{entry.price.toLocaleString('ru')} ₽</p>
+          <span className="text-muted/40 text-xs">›</span>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -63,9 +70,9 @@ function Card({ entry, onOutcome }: { entry: HistoryEntry; onOutcome: (id: strin
         <p className="text-muted/70 text-xs mt-3 leading-relaxed line-clamp-2">🤖 {entry.aiComment}</p>
       )}
 
-      {/* Mark buttons */}
+      {/* Mark buttons — stop propagation so click doesn't open detail */}
       {isPending && (
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
           <button onClick={() => onOutcome(entry.id, 'stopped')}
             className="flex-1 bg-primary/10 border border-primary/30 text-primary text-sm font-bold py-2.5 rounded-xl hover:bg-primary/20 active:scale-95 transition-all">
             💚 Отказался

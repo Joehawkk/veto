@@ -76,6 +76,87 @@ function LoadingScreen({ name, price }: { name: string; price: number }) {
   )
 }
 
+/* ── Celebration screen ────────────────────────── */
+function CelebrationScreen({
+  name, price, totalSaved, suggestion, onHome, onHistory,
+}: {
+  name: string
+  price: number
+  totalSaved: number
+  suggestion: { icon: string; text: string } | null
+  onHome: () => void
+  onHistory: () => void
+}) {
+  return (
+    <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6">
+      <div className="max-w-sm w-full flex flex-col items-center gap-6">
+
+        {/* Animated checkmark */}
+        <div className="relative inline-flex items-center justify-center">
+          <div className="absolute w-28 h-28 rounded-full bg-primary/10 animate-ping [animation-duration:2s]" />
+          <div className="relative w-20 h-20 rounded-full bg-primary/20 border-2 border-primary/50 flex items-center justify-center">
+            <span className="text-4xl">💚</span>
+          </div>
+        </div>
+
+        <div className="text-center">
+          <h2 className="text-white font-black text-3xl mb-2">Так держать!</h2>
+          <p className="text-muted text-sm leading-relaxed">
+            Ты устоял перед импульсом и сохранил{' '}
+            <span className="text-primary font-black">{price.toLocaleString('ru')} ₽</span>
+          </p>
+        </div>
+
+        {/* Savings card */}
+        <div className="w-full bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="bg-primary/10 border-b border-primary/20 px-5 py-4">
+            <p className="text-white/70 text-xs uppercase tracking-widest font-bold mb-1">Отказался от</p>
+            <p className="text-white font-bold text-base truncate">{name}</p>
+            <p className="text-primary font-black text-2xl mt-1">{price.toLocaleString('ru')} ₽</p>
+          </div>
+          <div className="px-5 py-4 flex flex-col gap-4">
+            {totalSaved > 0 && (
+              <div className="flex items-center justify-between">
+                <p className="text-muted text-sm">Всего сэкономлено:</p>
+                <p className="text-primary font-black text-lg">
+                  {totalSaved.toLocaleString('ru')} ₽
+                </p>
+              </div>
+            )}
+            {suggestion && (
+              <div className="flex gap-3 items-start pt-3 border-t border-border">
+                <span className="text-2xl">{suggestion.icon}</span>
+                <div>
+                  <p className="text-muted text-[10px] uppercase tracking-wide font-bold mb-1">
+                    Лучше потрать на интересы:
+                  </p>
+                  <p className="text-white/80 text-sm leading-relaxed">{suggestion.text}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="w-full flex flex-col gap-3">
+          <button
+            onClick={onHome}
+            className="w-full bg-primary text-black font-black py-4 rounded-xl shadow-neon-green hover:shadow-neon-green-lg transition-all active:scale-[0.98]"
+          >
+            На главную
+          </button>
+          <button
+            onClick={onHistory}
+            className="w-full border border-border text-muted font-medium py-3 rounded-xl hover:text-white transition-colors"
+          >
+            📋 Посмотреть историю
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Main component ────────────────────────────── */
 export default function Result() {
   const navigate = useNavigate()
@@ -86,6 +167,7 @@ export default function Result() {
   const [aiResult, setAiResult] = useState<AIResult | null>(null)
   const [timerSet, setTimerSet] = useState(false)
   const [timerDays, setTimerDays] = useState<number | null>(null)
+  const [showCelebration, setShowCelebration] = useState(false)
 
   const current = getCurrent()
   const checkResult = getCheckResult()
@@ -95,7 +177,6 @@ export default function Result() {
     if (saved.current) return
     saved.current = true
 
-    // Recent history for AI context (last 6, excluding current)
     const recentHistory = getHistory().slice(0, 6)
 
     getAIResult({
@@ -125,16 +206,33 @@ export default function Result() {
   if (!current || !checkResult) return null
   if (!aiResult) return <LoadingScreen name={current.name} price={current.price} />
 
+  /* Celebration screen after refusing */
+  if (showCelebration) {
+    const totalSaved = getHistory()
+      .filter((e) => e.outcome === 'stopped')
+      .reduce((s, e) => s + e.price, 0)
+    const suggestion = pickSuggestion(profile?.interests ?? [])
+    return (
+      <CelebrationScreen
+        name={current.name}
+        price={current.price}
+        totalSaved={totalSaved}
+        suggestion={suggestion}
+        onHome={() => navigate('/')}
+        onHistory={() => navigate('/history')}
+      />
+    )
+  }
+
   const v = getVerdictMeta(aiResult.verdict)
-  const totalSaved = getHistory()
-    .filter((e) => e.outcome === 'stopped')
-    .reduce((s, e) => s + e.price, 0)
-  const suggestion = pickSuggestion(profile?.interests ?? [])
-  const showSavingsWidget = aiResult.verdict !== 'go'
 
   function handleOutcome(outcome: 'stopped' | 'bought') {
     updateOutcome(entryId, outcome)
-    navigate('/')
+    if (outcome === 'stopped') {
+      setShowCelebration(true)
+    } else {
+      navigate('/')
+    }
   }
 
   function handleSetTimer(days: number) {
@@ -165,43 +263,6 @@ export default function Result() {
       </div>
 
       <div className="flex-1 px-6 py-6 flex flex-col gap-4 overflow-y-auto pb-8">
-
-        {/* ── SAVINGS WIDGET (Так держать!) ── */}
-        {showSavingsWidget && (
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <div className="bg-primary/10 border-b border-primary/20 px-5 py-4">
-              <p className="text-primary font-black text-lg">
-                💚 Так держать!
-              </p>
-              <p className="text-white/80 text-sm mt-1">
-                Ты мог потратить{' '}
-                <span className="text-primary font-black">{current.price.toLocaleString('ru')} ₽</span>
-                {' '}на {current.name}, но остановился.
-              </p>
-            </div>
-            <div className="px-5 py-4">
-              {totalSaved > 0 && (
-                <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
-                  <p className="text-muted text-sm">Всего сэкономлено:</p>
-                  <p className="text-primary font-black text-lg">
-                    {(totalSaved + current.price).toLocaleString('ru')} ₽
-                  </p>
-                </div>
-              )}
-              {suggestion && (
-                <div>
-                  <p className="text-muted text-xs mb-2 uppercase tracking-wide font-bold">
-                    Лучше потрать на твои интересы:
-                  </p>
-                  <div className="flex gap-3 items-start">
-                    <span className="text-2xl">{suggestion.icon}</span>
-                    <p className="text-white/80 text-sm leading-relaxed">{suggestion.text}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Item info */}
         <div className="flex items-center justify-between py-3 px-4 bg-card border border-border rounded-xl">
