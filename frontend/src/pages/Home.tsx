@@ -75,18 +75,17 @@ export default function Home() {
         {/* Hero or form */}
         {!showForm ? (
           <div className="w-full flex flex-col items-center text-center gap-6">
-            {/* Orange gradient hero block */}
-            <div className="w-full rounded-3xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #FD7203 0%, #F86D06 60%, #D4350E 100%)' }}>
-              <div className="px-8 py-10">
-                <p className="text-white/80 text-sm font-medium mb-3 uppercase tracking-widest">Перед покупкой</p>
-                <h1 className="text-4xl font-black text-white leading-tight mb-3">
-                  Хочешь что-то купить?
-                </h1>
-                <p className="text-white/75 text-sm leading-relaxed">
-                  4 быстрых вопроса — и честный AI-вердикт.<br />
-                  Помогаем не тратить деньги на эмоциях.
-                </p>
-              </div>
+            {/* Hero text */}
+            <div className="w-full text-center pt-2">
+              <p className="text-muted text-xs font-semibold uppercase tracking-widest mb-3">Перед покупкой</p>
+              <h1 className="text-4xl font-black text-dark leading-tight mb-3">
+                Хочешь что-то<br />
+                <span className="text-primary">купить?</span>
+              </h1>
+              <p className="text-muted text-sm leading-relaxed max-w-xs mx-auto">
+                4 быстрых вопроса — и честный AI-вердикт.<br />
+                Помогаем не тратить деньги на эмоциях.
+              </p>
             </div>
 
             <button
@@ -149,7 +148,7 @@ export default function Home() {
                 <div className="flex-1">
                   <p className="text-sm font-bold leading-tight">{hasDiscount ? 'Есть скидка' : 'Скидки нет'}</p>
                   <p className="text-xs text-muted leading-tight mt-0.5">
-                    {hasDiscount ? 'Спросим: купил бы без скидки?' : 'Нажми, если товар по акции'}
+                    {hasDiscount ? 'AI учтёт скидку в вердикте' : 'Нажми, если товар по акции'}
                   </p>
                 </div>
                 <div className={`w-10 h-6 rounded-full transition-all flex items-center px-1 ${hasDiscount ? 'bg-primary' : 'bg-border'}`}>
