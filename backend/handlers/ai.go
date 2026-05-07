@@ -508,7 +508,7 @@ func buildSmartSuggestion(verdict string, input aiCheckRequest) string {
 			"Путешествия":    fmt.Sprintf("%.0f ₽ в копилку — уже серьёзный вклад в поездку.", price),
 			"Еда":            fmt.Sprintf("%.0f ₽ на кулинарный мастер-класс или дегустацию — новый опыт.", price),
 			"Творчество":     fmt.Sprintf("%.0f ₽ на хорошие инструменты — кисти, планшет Wacom базовый.", price),
-			"Кино и сериалы": fmt.Sprintf("%.0f ₽ = 5 месяцев Кинопоиска с 4K.", price),
+			"Кино и сериалы": fmt.Sprintf("%.0f ₽ — примерно месяц Кинопоиска Мульти с 4K (499 ₽/мес).", price),
 		}},
 		{5000, map[string]string{
 			"Игры":           fmt.Sprintf("%.0f ₽ — геймпад или несколько новых игр.", price),

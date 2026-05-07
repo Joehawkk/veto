@@ -121,7 +121,7 @@ export default function Home() {
             {stats.pending > 0 && (
               <Link
                 to="/history"
-                className="w-full border border-[#FF9E30]/50 bg-[#FFDE8A]/30 text-[#F86D06] font-medium py-3 rounded-xl text-sm text-center hover:bg-[#FFDE8A]/50 transition-colors flex items-center justify-center gap-2"
+                className="w-full border border-primary/30 bg-primary/10 text-primary font-medium py-3 rounded-xl text-sm text-center hover:bg-primary/15 transition-colors flex items-center justify-center gap-2"
               >
                 <ClockIcon size={14} /> {stats.pending} {stats.pending === 1 ? 'товар ждёт' : 'товара ждут'} решения
               </Link>

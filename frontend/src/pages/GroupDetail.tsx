@@ -180,8 +180,8 @@ export default function GroupDetail() {
 
   const me = group.members.find((m) => m.is_me)
   const myRole = me?.role ?? 'member'
-  const isOwner = myRole === 'owner'
-  const isAdmin = myRole === 'admin' || isOwner
+  const isOwner = group.is_owner || myRole === 'owner'
+  const isAdmin = isOwner || myRole === 'admin'
   const medalEmoji = ['🥇', '🥈', '🥉']
 
   const ROLE_LABEL: Record<string, string> = { owner: 'Владелец', admin: 'Админ', member: '' }
