@@ -81,12 +81,16 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 		"model": h.cfg.OpenRouterModel,
 		"messages": []map[string]string{
 			{
+				"role":    "system",
+				"content": "You are Veto, a Russian-language impulse purchase assistant. You MUST respond in Russian language only. Return only valid JSON without markdown or code blocks.",
+			},
+			{
 				"role":    "user",
 				"content": buildAIPrompt(input),
 			},
 		},
-		"max_tokens":  320,
-		"temperature": 0.6,
+		"max_tokens":  350,
+		"temperature": 0.8,
 	}
 
 	body, err := json.Marshal(payload)
