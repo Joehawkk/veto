@@ -263,8 +263,10 @@ func (h *Handler) GetGroupFeed(c *fiber.Ctx) error {
 
 	rows, err := h.db.Query(`
 		SELECT ch.id, u.username, u.display_name, u.avatar_url, ch.price, ch.name, ch.created_at,
-		       COUNT(cl.id) AS like_count,
-		       COUNT(CASE WHEN cl.user_id = $1 THEN 1 END) AS has_liked
+		       COUNT(CASE WHEN cl.reaction_type = 'heart' THEN 1 END) AS like_count,
+		       COUNT(CASE WHEN cl.reaction_type = 'flame' THEN 1 END) AS flame_count,
+		       COUNT(CASE WHEN cl.user_id = $1 AND cl.reaction_type = 'heart' THEN 1 END) AS has_liked,
+		       COUNT(CASE WHEN cl.user_id = $1 AND cl.reaction_type = 'flame' THEN 1 END) AS has_flamed
 		FROM checks ch
 		JOIN users u ON u.id = ch.user_id
 		JOIN group_members gm ON gm.user_id = ch.user_id AND gm.group_id = $2
@@ -284,15 +286,16 @@ func (h *Handler) GetGroupFeed(c *fiber.Ctx) error {
 		var id, checkName, username, displayName, createdAt string
 		var avatarURL sql.NullString
 		var price float64
-		var likeCount, hasLiked int
-		if err := rows.Scan(&id, &username, &displayName, &avatarURL, &price, &checkName, &createdAt, &likeCount, &hasLiked); err != nil {
+		var likeCount, flameCount, hasLiked, hasFlamed int
+		if err := rows.Scan(&id, &username, &displayName, &avatarURL, &price, &checkName, &createdAt, &likeCount, &flameCount, &hasLiked, &hasFlamed); err != nil {
 			continue
 		}
 		feed = append(feed, fiber.Map{
 			"id": id, "username": username, "display_name": displayName,
 			"avatar_url": nullStr(avatarURL),
 			"amount": price, "description": checkName, "created_at": createdAt,
-			"like_count": likeCount, "has_liked": hasLiked > 0,
+			"like_count": likeCount, "flame_count": flameCount,
+			"has_liked": hasLiked > 0, "has_flamed": hasFlamed > 0,
 		})
 	}
 	return c.JSON(feed)
@@ -302,9 +305,14 @@ func (h *Handler) LikeCheck(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 	checkID := c.Params("id")
 
+	reactionType := c.Query("reaction", "heart")
+	if reactionType != "heart" && reactionType != "flame" {
+		reactionType = "heart"
+	}
+
 	_, err := h.db.Exec(
-		`INSERT INTO check_likes (check_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-		checkID, userID,
+		`INSERT INTO check_likes (check_id, user_id, reaction_type) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+		checkID, userID, reactionType,
 	)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to like"})
@@ -316,7 +324,12 @@ func (h *Handler) UnlikeCheck(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 	checkID := c.Params("id")
 
-	h.db.Exec(`DELETE FROM check_likes WHERE check_id = $1 AND user_id = $2`, checkID, userID)
+	reactionType := c.Query("reaction", "heart")
+	if reactionType != "heart" && reactionType != "flame" {
+		reactionType = "heart"
+	}
+
+	h.db.Exec(`DELETE FROM check_likes WHERE check_id = $1 AND user_id = $2 AND reaction_type = $3`, checkID, userID, reactionType)
 	return c.JSON(fiber.Map{"success": true})
 }
 

@@ -104,6 +104,10 @@ func Migrate(db *sql.DB) error {
 		`ALTER TABLE checks ADD COLUMN IF NOT EXISTS ai_suggestion TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded BOOLEAN NOT NULL DEFAULT false`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_data JSONB NOT NULL DEFAULT '{}'::jsonb`,
+		// Flame reactions: extend check_likes to support multiple reaction types per user per check
+		`ALTER TABLE check_likes ADD COLUMN IF NOT EXISTS reaction_type TEXT NOT NULL DEFAULT 'heart'`,
+		`ALTER TABLE check_likes DROP CONSTRAINT IF EXISTS check_likes_check_id_user_id_key`,
+		`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_likes_check_user_reaction_key') THEN ALTER TABLE check_likes ADD CONSTRAINT check_likes_check_user_reaction_key UNIQUE (check_id, user_id, reaction_type); END IF; END $$`,
 	}
 	for _, s := range stmts {
 		if _, err := db.Exec(s); err != nil {

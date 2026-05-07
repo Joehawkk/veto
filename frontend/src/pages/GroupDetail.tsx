@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { api, type GroupDetail as IGroupDetail, type FeedItem, type GroupGoal } from '../api/client'
-import { CopyIcon, HeartIcon } from '../components/Icons'
+import { api, type GroupDetail as IGroupDetail, type FeedItem, type GroupGoal, type CheckEntry } from '../api/client'
+import { CopyIcon, HeartIcon, FlameIcon } from '../components/Icons'
 
 type Tab = 'feed' | 'members' | 'goals'
 
@@ -27,6 +27,11 @@ export default function GroupDetail() {
 
   // Transfer ownership dialog
   const [transferTarget, setTransferTarget] = useState<string | null>(null)
+
+  // Contribution modal
+  const [contributeGoal, setContributeGoal] = useState<GroupGoal | null>(null)
+  const [userChecks, setUserChecks] = useState<CheckEntry[]>([])
+  const [contributing, setContributing] = useState(false)
 
   async function reload() {
     if (!id) return
@@ -62,12 +67,42 @@ export default function GroupDetail() {
     const item = feed.find((v) => String(v.id) === cid)
     if (!item) return
     if (item.has_liked) {
-      await api.checkLikes.unlike(cid)
+      await api.checkLikes.unlike(cid, 'heart')
       setFeed((prev) => prev.map((v) => String(v.id) === cid ? { ...v, has_liked: false, like_count: (v.like_count ?? 1) - 1 } : v))
     } else {
-      await api.checkLikes.like(cid)
+      await api.checkLikes.like(cid, 'heart')
       setFeed((prev) => prev.map((v) => String(v.id) === cid ? { ...v, has_liked: true, like_count: (v.like_count ?? 0) + 1 } : v))
     }
+  }
+
+  async function handleFlame(checkId: string | number) {
+    const cid = String(checkId)
+    const item = feed.find((v) => String(v.id) === cid)
+    if (!item) return
+    if (item.has_flamed) {
+      await api.checkLikes.unlike(cid, 'flame')
+      setFeed((prev) => prev.map((v) => String(v.id) === cid ? { ...v, has_flamed: false, flame_count: (v.flame_count ?? 1) - 1 } : v))
+    } else {
+      await api.checkLikes.like(cid, 'flame')
+      setFeed((prev) => prev.map((v) => String(v.id) === cid ? { ...v, has_flamed: true, flame_count: (v.flame_count ?? 0) + 1 } : v))
+    }
+  }
+
+  async function openContribute(goal: GroupGoal) {
+    const { data } = await api.checks.list()
+    setUserChecks(data.filter((ch) => ch.outcome === 'stopped'))
+    setContributeGoal(goal)
+  }
+
+  async function handleContribute(amount: number) {
+    if (!contributeGoal || !id) return
+    setContributing(true)
+    try {
+      await api.groups.contributeGoal(Number(id), contributeGoal.id, amount)
+      setContributeGoal(null)
+      reloadGoals()
+    } catch {}
+    finally { setContributing(false) }
   }
 
   async function handleLeave() {
@@ -266,13 +301,22 @@ export default function GroupDetail() {
                   отказался от <span className="font-bold">«{item.description}»</span>
                 </p>
                 <p className="text-primary font-black text-lg mb-3">+{item.amount.toLocaleString('ru')} ₽</p>
-                <button
-                  onClick={() => handleLike(item.id)}
-                  className={`flex items-center gap-1.5 text-sm transition-all ${item.has_liked ? 'text-secondary' : 'text-muted hover:text-secondary'}`}
-                >
-                  <HeartIcon size={18} filled={item.has_liked} />
-                  <span>{item.like_count ?? 0}</span>
-                </button>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => handleLike(item.id)}
+                    className={`flex items-center gap-1.5 text-sm transition-all ${item.has_liked ? 'text-secondary' : 'text-muted hover:text-secondary'}`}
+                  >
+                    <HeartIcon size={18} filled={item.has_liked} />
+                    <span>{item.like_count ?? 0}</span>
+                  </button>
+                  <button
+                    onClick={() => handleFlame(item.id)}
+                    className={`flex items-center gap-1.5 text-sm transition-all ${item.has_flamed ? 'text-[#F86D06]' : 'text-muted hover:text-[#F86D06]'}`}
+                  >
+                    <FlameIcon size={18} />
+                    <span>{item.flame_count ?? 0}</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -340,6 +384,14 @@ export default function GroupDetail() {
                     <span>{goal.current_amount.toLocaleString('ru')} ₽</span>
                     <span>{goal.target_amount.toLocaleString('ru')} ₽</span>
                   </div>
+                  {goal.status !== 'completed' && (
+                    <button
+                      onClick={() => openContribute(goal)}
+                      className="mt-3 w-full border border-primary/30 text-primary text-sm font-medium py-2 rounded-xl hover:bg-primary/5 transition-colors"
+                    >
+                      + Внести сэкономленное
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -421,6 +473,36 @@ export default function GroupDetail() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Contribution modal */}
+        {contributeGoal && (
+          <div className="fixed inset-0 bg-dark/50 flex items-center justify-center z-50 px-6">
+            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-card-hover flex flex-col" style={{ maxHeight: '80vh' }}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-black text-dark">Вклад в «{contributeGoal.title}»</h3>
+                <button onClick={() => setContributeGoal(null)} className="text-muted hover:text-dark text-xl leading-none">✕</button>
+              </div>
+              <p className="text-muted text-sm mb-4">Выбери сэкономленный товар — его цена пойдёт в общую цель:</p>
+              <div className="overflow-y-auto flex flex-col gap-2 flex-1">
+                {userChecks.length === 0 ? (
+                  <p className="text-muted text-sm text-center py-6">Нет сэкономленных товаров</p>
+                ) : (
+                  userChecks.map((ch) => (
+                    <button
+                      key={ch.id}
+                      onClick={() => handleContribute(ch.price)}
+                      disabled={contributing}
+                      className="w-full flex items-center justify-between bg-bg border border-border rounded-xl px-4 py-3 hover:border-primary transition-colors disabled:opacity-60 text-left"
+                    >
+                      <span className="text-dark text-sm font-medium truncate mr-3">{ch.name}</span>
+                      <span className="text-primary font-black text-sm shrink-0">+{ch.price.toLocaleString('ru')} ₽</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         )}
 

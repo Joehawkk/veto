@@ -309,13 +309,11 @@ func Seed(db *sql.DB) error {
 		}
 	}
 
-	// ── Recalculate total_saved from both vetos + stopped checks ───────────
+	// ── Recalculate total_saved from goals (sum of current_amount per user) ──
 	for _, uid := range userIDs {
 		db.Exec(`
 			UPDATE users SET total_saved = COALESCE((
-				SELECT SUM(amount) FROM vetos WHERE user_id = $1
-			), 0) + COALESCE((
-				SELECT SUM(price) FROM checks WHERE user_id = $1 AND outcome = 'stopped'
+				SELECT SUM(current_amount) FROM goals WHERE user_id = $1
 			), 0)
 			WHERE id = $1`, uid)
 	}

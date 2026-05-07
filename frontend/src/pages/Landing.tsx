@@ -11,7 +11,7 @@ const features = [
   },
   {
     icon: <FlameIcon size={28} />,
-    color: 'text-[#F86D06] bg-[#FFDE8A]/40',
+    color: 'text-[#F86D06] bg-[#F86D06]/15',
     title: 'Получи Respect',
     desc: 'Комьюнити видит твои отказы и дает Respect. Отказываться стало модно.',
   },
