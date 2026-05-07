@@ -3,7 +3,7 @@ package config
 import "os"
 
 type Config struct {
-	DBPath           string
+	DatabaseURL      string
 	JWTSecret        string
 	Port             string
 	OpenRouterAPIKey string
@@ -12,7 +12,7 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		DBPath:           getEnv("DB_PATH", "./veto.db"),
+		DatabaseURL:      getEnv("DATABASE_URL", "postgres://veto:veto@localhost:5432/veto?sslmode=disable"),
 		JWTSecret:        getEnv("JWT_SECRET", "dev-secret-key-change-in-production"),
 		Port:             getEnv("PORT", "8080"),
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),

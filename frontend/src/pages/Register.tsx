@@ -7,7 +7,7 @@ export default function Register() {
   const navigate = useNavigate()
   const { login } = useAuth()
   const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -17,9 +17,9 @@ export default function Register() {
     setError('')
     setLoading(true)
     try {
-      const { data } = await api.auth.register({ email, password, username })
-      login(data.token, data.user_id, data.username)
-      navigate('/dashboard', { replace: true })
+      const { data } = await api.auth.register({ username, display_name: displayName, password })
+      login(data.token, data.user_id, data.username, data.display_name)
+      navigate('/onboarding', { replace: true })
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setError(msg || 'Ошибка регистрации. Попробуй снова.')
@@ -34,8 +34,8 @@ export default function Register() {
         VETO
       </Link>
 
-      <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-8">
-        <h1 className="text-2xl font-black mb-1">Создай аккаунт</h1>
+      <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-8 shadow-card">
+        <h1 className="text-2xl font-black text-dark mb-1">Создай аккаунт</h1>
         <p className="text-muted text-sm mb-8">Начни экономить и флексить на других</p>
 
         {error && (
@@ -46,30 +46,32 @@ export default function Register() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="text-muted text-xs font-medium block mb-1.5">Имя пользователя</label>
+            <label className="text-dark text-xs font-semibold block mb-1.5">Имя для отображения</label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Александр"
+              required
+              minLength={2}
+              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary transition-colors"
+            />
+          </div>
+          <div>
+            <label className="text-dark text-xs font-semibold block mb-1.5">Имя пользователя</label>
             <input
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
               placeholder="alex_saver"
               required
               minLength={2}
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:border-primary transition-colors"
+              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary transition-colors"
             />
+            <p className="text-muted text-xs mt-1">Только латиница, цифры и _</p>
           </div>
           <div>
-            <label className="text-muted text-xs font-medium block mb-1.5">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
-          <div>
-            <label className="text-muted text-xs font-medium block mb-1.5">Пароль</label>
+            <label className="text-dark text-xs font-semibold block mb-1.5">Пароль</label>
             <input
               type="password"
               value={password}
@@ -77,13 +79,13 @@ export default function Register() {
               placeholder="минимум 6 символов"
               required
               minLength={6}
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:border-primary transition-colors"
+              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary transition-colors"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-black font-bold py-3 rounded-xl mt-2 hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="w-full bg-primary text-white font-bold py-3 rounded-xl mt-2 hover:opacity-90 transition-opacity disabled:opacity-60 shadow-orange"
           >
             {loading ? 'Создаём...' : 'Создать аккаунт'}
           </button>
@@ -91,7 +93,7 @@ export default function Register() {
 
         <p className="text-center text-muted text-sm mt-6">
           Уже есть аккаунт?{' '}
-          <Link to="/login" className="text-primary font-medium hover:underline">
+          <Link to="/login" className="text-primary font-semibold hover:underline">
             Войти
           </Link>
         </p>

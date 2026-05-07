@@ -34,7 +34,10 @@ func AuthRequired(secret string) fiber.Handler {
 			return c.Status(401).JSON(fiber.Map{"error": "invalid token claims"})
 		}
 
-		userID := int(claims["user_id"].(float64))
+		userID, ok := claims["user_id"].(string)
+		if !ok || userID == "" {
+			return c.Status(401).JSON(fiber.Map{"error": "invalid token claims"})
+		}
 		c.Locals("user_id", userID)
 
 		return c.Next()

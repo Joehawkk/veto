@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { setCurrent } from '../lib/storage'
-import { useHistory } from '../hooks/useHistory'
+import { useChecks } from '../hooks/useChecks'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../contexts/AuthContext'
 import BottomNav from '../components/BottomNav'
 
 export default function Home() {
   const navigate = useNavigate()
-  const { stats } = useHistory()
+  const { stats } = useChecks()
   const { profile } = useProfile()
   const { user, logout } = useAuth()
   const [showForm, setShowForm] = useState(false)

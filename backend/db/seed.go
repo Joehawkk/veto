@@ -11,7 +11,7 @@ func Seed(db *sql.DB) error {
 	var count int
 	db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count)
 	if count > 0 {
-		return nil // Already seeded
+		return nil
 	}
 
 	log.Println("Seeding database with test data...")
@@ -20,29 +20,28 @@ func Seed(db *sql.DB) error {
 	pw := string(hash)
 
 	type seedUser struct {
-		email, username string
-		totalSaved      float64
+		username, displayName string
+		totalSaved            float64
 	}
 
 	users := []seedUser{
-		{"alex@veto.app", "alex", 14500},
-		{"marina@veto.app", "marina", 31200},
-		{"dmitry@veto.app", "dmitry", 8700},
-		{"kate@veto.app", "kate", 52400},
+		{"alex", "Алекс", 14500},
+		{"marina", "Марина", 31200},
+		{"dmitry", "Дмитрий", 8700},
+		{"kate", "Катя", 52400},
 	}
 
-	userIDs := make([]int, len(users))
+	userIDs := make([]string, len(users))
 	for i, u := range users {
 		err := db.QueryRow(
-			`INSERT INTO users (email, password_hash, username, total_saved) VALUES (?, ?, ?, ?) RETURNING id`,
-			u.email, pw, u.username, u.totalSaved,
+			`INSERT INTO users (username, password_hash, display_name, total_saved) VALUES ($1, $2, $3, $4) RETURNING id`,
+			u.username, pw, u.displayName, u.totalSaved,
 		).Scan(&userIDs[i])
 		if err != nil {
 			return err
 		}
 	}
 
-	// Goals
 	type seedGoal struct {
 		userIdx       int
 		title         string
@@ -58,20 +57,19 @@ func Seed(db *sql.DB) error {
 		{3, "PlayStation 5", 55000, 55000, "completed"},
 	}
 
-	goalIDs := make([]int, len(goals))
+	goalIDs := make([]int64, len(goals))
 	for i, g := range goals {
 		db.QueryRow(
-			`INSERT INTO goals (user_id, title, target_amount, current_amount, status) VALUES (?, ?, ?, ?, ?) RETURNING id`,
+			`INSERT INTO goals (user_id, title, target_amount, current_amount, status) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
 			userIDs[g.userIdx], g.title, g.target, g.saved, g.status,
 		).Scan(&goalIDs[i])
 	}
 
-	// Vetos
 	type seedVeto struct {
 		userIdx, goalIdx int
 		amount           float64
 		description      string
-		daysAgo          string
+		ago              string
 	}
 	vetos := []seedVeto{
 		{0, 0, 350, "Кофе в Старбакс", "2 hours"},
@@ -91,62 +89,59 @@ func Seed(db *sql.DB) error {
 		{3, 4, 27000, "Диван", "3 days"},
 	}
 
-	vetoIDs := make([]int, len(vetos))
+	vetoIDs := make([]int64, len(vetos))
 	for i, v := range vetos {
 		db.QueryRow(
 			`INSERT INTO vetos (user_id, goal_id, amount, description, created_at)
-			 VALUES (?, ?, ?, ?, datetime('now', ?)) RETURNING id`,
-			userIDs[v.userIdx], goalIDs[v.goalIdx], v.amount, v.description, "-"+v.daysAgo,
+			 VALUES ($1, $2, $3, $4, NOW() - $5::INTERVAL) RETURNING id`,
+			userIDs[v.userIdx], goalIDs[v.goalIdx], v.amount, v.description, v.ago,
 		).Scan(&vetoIDs[i])
 	}
 
-	// Respects (cross-users)
 	respects := [][2]int{
-		{1, 0}, {2, 0}, {3, 0}, // veto[0] liked by marina, dmitry, kate
-		{0, 4}, {2, 4}, {3, 4}, // veto[4] liked by alex, dmitry, kate
-		{0, 8}, {1, 8}, {3, 8}, // veto[8] liked by alex, marina, kate
-		{0, 11}, {1, 11}, {2, 11}, // veto[11] liked by all
+		{1, 0}, {2, 0}, {3, 0},
+		{0, 4}, {2, 4}, {3, 4},
+		{0, 8}, {1, 8}, {3, 8},
+		{0, 11}, {1, 11}, {2, 11},
 		{0, 3}, {1, 3},
 		{2, 6}, {3, 6},
 	}
 	for _, r := range respects {
 		db.Exec(
-			`INSERT OR IGNORE INTO respects (veto_id, from_user_id) VALUES (?, ?)`,
+			`INSERT INTO respects (veto_id, from_user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
 			vetoIDs[r[1]], userIDs[r[0]],
 		)
 	}
 
-	// Groups
-	var g1, g2 int
+	var g1, g2 int64
 	db.QueryRow(
-		`INSERT INTO groups (name, invite_code, owner_id) VALUES ('Финансисты', 'FIN001', ?) RETURNING id`,
+		`INSERT INTO groups (name, invite_code, owner_id) VALUES ('Финансисты', 'FIN001', $1) RETURNING id`,
 		userIDs[0],
 	).Scan(&g1)
 	db.QueryRow(
-		`INSERT INTO groups (name, invite_code, owner_id) VALUES ('Челлендж 30 дней', 'CHAL30', ?) RETURNING id`,
+		`INSERT INTO groups (name, invite_code, owner_id) VALUES ('Челлендж 30 дней', 'CHAL30', $1) RETURNING id`,
 		userIDs[2],
 	).Scan(&g2)
 
-	// Group members
-	// Финансисты: alex, marina, kate
-	for _, uid := range []int{userIDs[0], userIDs[1], userIDs[3]} {
-		db.Exec(`INSERT OR IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)`, g1, uid)
+	for _, uid := range []string{userIDs[0], userIDs[1], userIDs[3]} {
+		db.Exec(`INSERT INTO group_members (group_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, g1, uid)
 	}
-	// Челлендж 30 дней: dmitry, kate
-	for _, uid := range []int{userIDs[2], userIDs[3]} {
-		db.Exec(`INSERT OR IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)`, g2, uid)
+	for _, uid := range []string{userIDs[2], userIDs[3]} {
+		db.Exec(`INSERT INTO group_members (group_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, g2, uid)
 	}
 
-	// Notifications
-	db.Exec(`INSERT INTO notifications (user_id, type, message) VALUES (?, 'group_veto', ?)`,
+	db.Exec(`INSERT INTO notifications (user_id, type, message) VALUES ($1, 'group_veto', $2)`,
 		userIDs[0], "@marina ветировала «Планшет» на 19510 ₽")
-	db.Exec(`INSERT INTO notifications (user_id, type, message) VALUES (?, 'group_veto', ?)`,
+	db.Exec(`INSERT INTO notifications (user_id, type, message) VALUES ($1, 'group_veto', $2)`,
 		userIDs[0], "@kate ветировала «Диван» на 27000 ₽")
-	db.Exec(`INSERT INTO notifications (user_id, type, message) VALUES (?, 'goal_completed', ?)`,
+	db.Exec(`INSERT INTO notifications (user_id, type, message) VALUES ($1, 'goal_completed', $2)`,
 		userIDs[1], "🎉 Цель «AirPods Pro» выполнена!")
-	db.Exec(`INSERT INTO notifications (user_id, type, message) VALUES (?, 'goal_completed', ?)`,
+	db.Exec(`INSERT INTO notifications (user_id, type, message) VALUES ($1, 'goal_completed', $2)`,
 		userIDs[3], "🎉 Цель «PlayStation 5» выполнена!")
 
 	log.Println("Seed complete: 4 users, 2 groups, 15 vetos")
 	return nil
 }
+
+// Ensure sql.ErrNoRows is imported for potential use elsewhere.
+var _ = sql.ErrNoRows

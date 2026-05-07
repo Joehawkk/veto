@@ -2,13 +2,13 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type Profile, type Goal } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
-import { useHistory } from '../hooks/useHistory'
+import { useChecks } from '../hooks/useChecks'
 import BottomNav from '../components/BottomNav'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
   const { logout } = useAuth()
-  const { stats } = useHistory()
+  const { stats } = useChecks()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
