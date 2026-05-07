@@ -148,7 +148,7 @@ export default function Result() {
   const { getAIResult } = useAI()
   const { profile } = useProfile()
   const saved = useRef(false)
-  const [checkId, setCheckId] = useState<string | null>(null)
+  const checkIdRef = useRef<string | null>(null)
   const [aiResult, setAiResult] = useState<AIResult | null>(null)
   const [timerSet, setTimerSet] = useState(false)
   const [timerDays, setTimerDays] = useState<number | null>(null)
@@ -174,7 +174,7 @@ export default function Result() {
         answers: checkResult.answers,
         ai_verdict: result.verdict, ai_comment: result.tip,
         outcome: 'pending',
-      }).then(({ data }) => setCheckId(data.id)).catch(() => {})
+      }).then(({ data }) => { checkIdRef.current = data.id }).catch(() => {})
     })
   }, [])
 
@@ -194,7 +194,7 @@ export default function Result() {
   const v = getVerdictMeta(aiResult.verdict)
 
   function handleOutcome(outcome: 'stopped' | 'bought') {
-    if (checkId) api.checks.update(checkId, { outcome }).catch(() => {})
+    if (checkIdRef.current) api.checks.update(checkIdRef.current, { outcome }).catch(() => {})
     if (outcome === 'stopped') {
       setShowCelebration(true)
     } else {
@@ -204,7 +204,7 @@ export default function Result() {
 
   function handleSetTimer(days: number) {
     const d = new Date(); d.setDate(d.getDate() + days)
-    if (checkId) api.checks.update(checkId, { timer_deadline: d.toISOString() }).catch(() => {})
+    if (checkIdRef.current) api.checks.update(checkIdRef.current, { timer_deadline: d.toISOString() }).catch(() => {})
     setTimerDays(days); setTimerSet(true)
   }
 
