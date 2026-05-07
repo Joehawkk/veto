@@ -27,9 +27,13 @@ export function useAI() {
       }
 
       try {
+        const token = localStorage.getItem('token')
         const res = await fetch('/api/ai/check', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify(params),
         })
 

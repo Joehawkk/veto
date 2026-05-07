@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { setCurrent } from '../lib/storage'
 import { useChecks } from '../hooks/useChecks'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
+import { api } from '../api/client'
 import BottomNav from '../components/BottomNav'
 import { ClockIcon, TagIcon, MoonIcon } from '../components/Icons'
 
@@ -16,6 +17,11 @@ export default function Home() {
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
   const [hasDiscount, setHasDiscount] = useState(false)
+  const [serverTotalSaved, setServerTotalSaved] = useState<number | null>(null)
+
+  useEffect(() => {
+    api.me.get().then(({ data }) => setServerTotalSaved(data.total_saved)).catch(() => {})
+  }, [])
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -24,7 +30,7 @@ export default function Home() {
     navigate('/check')
   }
 
-  const totalSaved = stats.saved
+  const totalSaved = serverTotalSaved ?? stats.saved
   const vetoCount = stats.stopped
   const hasSaved = totalSaved > 0 || vetoCount > 0
   const displayName = user?.display_name || user?.username || ''
