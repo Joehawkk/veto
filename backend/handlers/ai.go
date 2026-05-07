@@ -156,6 +156,13 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 		}
 	}
 
+	// Don't let AI be harsher than what the local scoring computes.
+	// e.g. if user said "I need it now" + "no similar items", local gives "wait" — AI can't override to "veto".
+	localVerdict := deriveAIVerdict(input)
+	if localVerdict == "wait" && parsed.Verdict == "veto" {
+		parsed.Verdict = "wait"
+	}
+
 	parsed.Source = "openrouter"
 	return parsed, true
 }

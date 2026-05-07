@@ -5,7 +5,7 @@ import { useAI, type AIResult } from '../hooks/useAI'
 import { useProfile } from '../hooks/useProfile'
 import { api } from '../api/client'
 import VerdictBadge from '../components/VerdictBadge'
-import { HeartIcon, CartIcon } from '../components/Icons'
+import { HeartIcon, CartIcon, ClockIcon, WarningIcon, TagIcon, LightbulbIcon, ListIcon } from '../components/Icons'
 import type { Verdict } from '../lib/scoring'
 
 const TIMER_OPTIONS = [
@@ -128,8 +128,8 @@ function CelebrationScreen({
           <button onClick={onHome} className="w-full bg-primary text-white font-black py-4 rounded-xl shadow-orange hover:shadow-orange-lg transition-all active:scale-[0.98]">
             На главную
           </button>
-          <button onClick={onHistory} className="w-full border border-border bg-white text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card">
-            📋 Посмотреть историю
+          <button onClick={onHistory} className="w-full border border-border bg-white text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card flex items-center justify-center gap-2">
+            <ListIcon size={16} /> Посмотреть историю
           </button>
         </div>
       </div>
@@ -235,7 +235,7 @@ export default function Result() {
         {suggestion && (
           <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">💡</span>
+              <span className="text-primary"><LightbulbIcon size={18} /></span>
               <p className="text-dark font-black text-sm">Лучше потрать на это</p>
             </div>
             <div className="flex gap-3 items-start">
@@ -249,7 +249,7 @@ export default function Result() {
         <div className="flex items-center justify-between py-3 px-4 bg-white border border-border rounded-xl shadow-card">
           <div>
             <p className="text-dark font-medium text-sm">{current.name}</p>
-            {current.hasDiscount && <p className="text-[#F86D06] text-xs mt-0.5">🏷️ Со скидкой</p>}
+            {current.hasDiscount && <p className="text-[#F86D06] text-xs mt-0.5 flex items-center gap-1"><TagIcon size={12} /> Со скидкой</p>}
           </div>
           <p className={`font-black ${aiResult.verdict === 'go' ? 'text-primary' : aiResult.verdict === 'wait' ? 'text-[#F86D06]' : 'text-secondary'}`}>{current.price.toLocaleString('ru')} ₽</p>
         </div>
@@ -257,7 +257,7 @@ export default function Result() {
         {/* Timer */}
         {!timerSet ? (
           <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
-            <p className="text-dark font-bold mb-1">⏰ Нужно подумать?</p>
+            <p className="text-dark font-bold mb-1 flex items-center gap-2"><ClockIcon size={16} /> Нужно подумать?</p>
             <p className="text-muted text-xs mb-4">Поставь таймер — напомним вернуться и решить</p>
             <div className="flex flex-wrap gap-2">
               {TIMER_OPTIONS.map((opt) => (
@@ -273,12 +273,12 @@ export default function Result() {
           </div>
         ) : (
           <div className="border rounded-2xl p-5 text-center" style={{ background: 'rgba(253,114,3,0.06)', borderColor: 'rgba(253,114,3,0.30)' }}>
-            <p className="text-primary font-black text-lg mb-1">⏰ Таймер поставлен</p>
+            <p className="text-primary font-black text-lg mb-1 flex items-center justify-center gap-2"><ClockIcon size={18} /> Таймер поставлен</p>
             <p className="text-muted text-sm">
               Вернись через {timerDays} {timerDays === 1 ? 'день' : timerDays! < 5 ? 'дня' : 'дней'} — найдёшь товар в истории
             </p>
-            <Link to="/history" className="inline-block mt-3 text-primary text-sm font-bold hover:underline">
-              Перейти в историю →
+            <Link to="/history" className="inline-flex items-center gap-1 mt-3 text-primary text-sm font-bold hover:underline">
+              <ListIcon size={14} /> Перейти в историю
             </Link>
           </div>
         )}
