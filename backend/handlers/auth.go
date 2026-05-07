@@ -22,15 +22,15 @@ func (h *Handler) Register(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid input"})
 	}
 	if input.Username == "" || input.DisplayName == "" || input.Password == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "username, display_name and password are required"})
+		return c.Status(400).JSON(fiber.Map{"error": "Заполни все поля"})
 	}
 	if len(input.Password) < 6 {
-		return c.Status(400).JSON(fiber.Map{"error": "password must be at least 6 characters"})
+		return c.Status(400).JSON(fiber.Map{"error": "Пароль должен быть не менее 6 символов"})
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "internal error"})
+		return c.Status(500).JSON(fiber.Map{"error": "Внутренняя ошибка, попробуй снова"})
 	}
 
 	var userID string
@@ -39,12 +39,12 @@ func (h *Handler) Register(c *fiber.Ctx) error {
 		input.Username, string(hash), input.DisplayName,
 	).Scan(&userID)
 	if err != nil {
-		return c.Status(409).JSON(fiber.Map{"error": "username already taken"})
+		return c.Status(409).JSON(fiber.Map{"error": "Логин уже занят, выбери другой"})
 	}
 
 	token, err := h.generateToken(userID)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "failed to generate token"})
+		return c.Status(500).JSON(fiber.Map{"error": "Внутренняя ошибка, попробуй снова"})
 	}
 
 	return c.Status(201).JSON(fiber.Map{
@@ -61,7 +61,7 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid input"})
 	}
 	if input.Username == "" || input.Password == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "username and password are required"})
+		return c.Status(400).JSON(fiber.Map{"error": "Введи логин и пароль"})
 	}
 
 	var userID, passwordHash, displayName string
@@ -70,16 +70,16 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 		input.Username,
 	).Scan(&userID, &passwordHash, &displayName)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "account_not_found"})
+		return c.Status(404).JSON(fiber.Map{"error": "Аккаунт не найден"})
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(input.Password)); err != nil {
-		return c.Status(401).JSON(fiber.Map{"error": "invalid_credentials"})
+		return c.Status(401).JSON(fiber.Map{"error": "Неверный пароль"})
 	}
 
 	token, err := h.generateToken(userID)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "failed to generate token"})
+		return c.Status(500).JSON(fiber.Map{"error": "Внутренняя ошибка, попробуй снова"})
 	}
 
 	return c.JSON(fiber.Map{

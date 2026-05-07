@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { api, type GroupDetail as IGroupDetail, type FeedItem } from '../api/client'
+import { CopyIcon, HeartIcon } from '../components/Icons'
 
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>()
@@ -134,8 +135,12 @@ export default function GroupDetail() {
           <div className="flex items-center gap-3 mb-3">
             <span className="text-muted text-xs">Код:</span>
             <span className="font-mono font-black text-primary tracking-widest">{group.invite_code}</span>
-            <button onClick={copyCode} className="ml-auto text-xs text-muted hover:text-primary transition-colors">
-              {copied ? '✓ скопировано' : 'скопировать'}
+            <button onClick={copyCode} className="ml-auto flex items-center gap-1 text-xs text-muted hover:text-primary transition-colors" title="Скопировать код">
+              {copied ? (
+                <span className="text-primary font-medium">✓</span>
+              ) : (
+                <CopyIcon size={15} />
+              )}
             </button>
           </div>
 
@@ -207,15 +212,7 @@ export default function GroupDetail() {
                   onClick={() => handleLike(item.id)}
                   className={`flex items-center gap-1.5 text-sm transition-all ${item.has_liked ? 'text-secondary' : 'text-muted hover:text-secondary'}`}
                 >
-                  <svg
-                    width="18" height="18" viewBox="0 0 24 24"
-                    fill={item.has_liked ? 'currentColor' : 'none'}
-                    stroke="currentColor" strokeWidth="2"
-                    strokeLinecap="round" strokeLinejoin="round"
-                    className="transition-all"
-                  >
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                  </svg>
+                  <HeartIcon size={18} filled={item.has_liked} />
                   <span>{item.like_count ?? 0}</span>
                 </button>
               </div>

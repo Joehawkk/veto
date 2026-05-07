@@ -1,13 +1,15 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useChecks } from '../hooks/useChecks'
 import { type CheckEntry } from '../api/client'
-import { getVerdictMeta, type Verdict } from '../lib/scoring'
+import { type Verdict } from '../lib/scoring'
 import BottomNav from '../components/BottomNav'
+import VerdictBadge from '../components/VerdictBadge'
+import { HeartIcon, CartIcon } from '../components/Icons'
 
 const OUTCOME = {
-  stopped: { label: 'Отказался', icon: '💚' },
-  bought:  { label: 'Купил',     icon: '🛒' },
-  pending: { label: 'Ожидает',   icon: '⏳' },
+  stopped: { label: 'Отказался', color: 'text-primary' },
+  bought:  { label: 'Купил',     color: 'text-gray-500' },
+  pending: { label: 'Ожидает',   color: 'text-[#F86D06]' },
 }
 
 function outcomeCardClass(entry: CheckEntry): string {
@@ -33,14 +35,18 @@ function getTimeLeft(deadline: string): string {
   return `ещё ${m} мин`
 }
 
+const verdictTextColor: Record<string, string> = {
+  go: 'text-primary', wait: 'text-[#F86D06]', veto: 'text-secondary',
+}
+
 function Card({ entry, onOutcome }: { entry: CheckEntry; onOutcome: (id: string, o: 'stopped' | 'bought') => void }) {
   const navigate = useNavigate()
-  const v = getVerdictMeta(entry.ai_verdict as Verdict)
   const o = OUTCOME[entry.outcome]
   const isPending = entry.outcome === 'pending'
   const hasTimer = isPending && !!entry.timer_deadline
   const expired = hasTimer && new Date(entry.timer_deadline!).getTime() < Date.now()
   const date = new Date(entry.created_at).toLocaleDateString('ru', { day: 'numeric', month: 'short' })
+  const priceColor = verdictTextColor[entry.ai_verdict] ?? 'text-dark'
 
   return (
     <div
@@ -55,17 +61,17 @@ function Card({ entry, onOutcome }: { entry: CheckEntry; onOutcome: (id: string,
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <p className={`font-black ${v.text}`}>{entry.price.toLocaleString('ru')} ₽</p>
+          <p className={`font-black ${priceColor}`}>{entry.price.toLocaleString('ru')} ₽</p>
           <span className="text-muted text-xs">›</span>
         </div>
       </div>
 
       <div className="flex items-center gap-2 mt-3 flex-wrap">
-        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${v.badge}`}>
-          {v.icon} {v.label}
-        </span>
-        <span className="text-xs text-muted flex items-center gap-1">
-          <span>{o.icon}</span><span>{o.label}</span>
+        <VerdictBadge verdict={entry.ai_verdict as Verdict} />
+        <span className={`text-xs font-medium flex items-center gap-1 ${o.color}`}>
+          {entry.outcome === 'stopped' && <HeartIcon size={12} filled />}
+          {entry.outcome === 'bought' && <CartIcon size={12} />}
+          {o.label}
         </span>
       </div>
 
@@ -88,15 +94,15 @@ function Card({ entry, onOutcome }: { entry: CheckEntry; onOutcome: (id: string,
         <div className="flex gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => onOutcome(entry.id, 'stopped')}
-            className="flex-1 bg-primary/10 border border-primary/25 text-primary text-sm font-bold py-2.5 rounded-xl hover:bg-primary/20 active:scale-95 transition-all"
+            className="flex-1 bg-primary/10 border border-primary/25 text-primary text-sm font-bold py-2.5 rounded-xl hover:bg-primary/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
           >
-            💚 Отказался
+            <HeartIcon size={14} filled /> Отказался
           </button>
           <button
             onClick={() => onOutcome(entry.id, 'bought')}
-            className="flex-1 bg-bg border border-border text-gray-dark text-sm font-bold py-2.5 rounded-xl hover:border-border-dark active:scale-95 transition-all"
+            className="flex-1 bg-bg border border-border text-gray-dark text-sm font-bold py-2.5 rounded-xl hover:border-border-dark active:scale-95 transition-all flex items-center justify-center gap-1.5"
           >
-            🛒 Купил
+            <CartIcon size={14} /> Купил
           </button>
         </div>
       )}

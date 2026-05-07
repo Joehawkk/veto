@@ -1,12 +1,14 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { type CheckEntry } from '../api/client'
-import { getVerdictMeta, type Verdict } from '../lib/scoring'
+import { type Verdict } from '../lib/scoring'
 import { useChecks } from '../hooks/useChecks'
+import VerdictBadge from '../components/VerdictBadge'
+import { HeartIcon, CartIcon, WaitIcon } from '../components/Icons'
 
 const OUTCOME = {
-  stopped: { label: 'Отказался',       icon: '💚', color: 'text-primary' },
-  bought:  { label: 'Купил',            icon: '🛒', color: 'text-gray-dark' },
-  pending: { label: 'Ожидает решения', icon: '⏳', color: 'text-[#F86D06]' },
+  stopped: { label: 'Отказался',       color: 'text-primary' },
+  bought:  { label: 'Купил',            color: 'text-gray-dark' },
+  pending: { label: 'Ожидает решения', color: 'text-[#F86D06]' },
 }
 
 const MOOD_RU: Record<string, string> = {
@@ -58,7 +60,6 @@ export default function HistoryDetail() {
     )
   }
 
-  const v = getVerdictMeta(entry.ai_verdict as Verdict)
   const o = OUTCOME[entry.outcome]
   const isPending = entry.outcome === 'pending'
   const hasTimer = isPending && !!entry.timer_deadline
@@ -88,9 +89,7 @@ export default function HistoryDetail() {
         <div className="rounded-2xl overflow-hidden shadow-card">
           <div className="px-5 py-6" style={{ background: verdictGradient(entry.ai_verdict) }}>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-black px-3 py-1.5 rounded-full uppercase tracking-wide bg-white/25 text-white">
-                {v.icon} {v.label}
-              </span>
+              <VerdictBadge verdict={entry.ai_verdict as Verdict} size="lg" ghost />
               {entry.has_discount && (
                 <span className="text-xs font-bold text-white bg-white/20 px-2.5 py-1 rounded-full">
                   🏷️ Скидка
@@ -103,7 +102,11 @@ export default function HistoryDetail() {
         </div>
 
         <div className="bg-white border border-border rounded-2xl px-5 py-4 flex items-center gap-3 shadow-card">
-          <span className="text-2xl">{o.icon}</span>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${entry.outcome === 'stopped' ? 'bg-primary/10 text-primary' : entry.outcome === 'bought' ? 'bg-gray-100 text-gray-500' : 'bg-[#FFDE8A]/40 text-[#F86D06]'}`}>
+            {entry.outcome === 'stopped' && <HeartIcon size={18} filled />}
+            {entry.outcome === 'bought' && <CartIcon size={18} />}
+            {entry.outcome === 'pending' && <WaitIcon size={18} />}
+          </div>
           <div>
             <p className="text-muted text-xs uppercase tracking-wide font-bold">Итог</p>
             <p className={`font-black text-base ${o.color}`}>{o.label}</p>
@@ -177,15 +180,15 @@ export default function HistoryDetail() {
           <div className="flex gap-2">
             <button
               onClick={() => handleMark('stopped')}
-              className="flex-1 bg-primary/10 border border-primary/25 text-primary text-sm font-bold py-3 rounded-xl hover:bg-primary/20 active:scale-95 transition-all"
+              className="flex-1 bg-primary/10 border border-primary/25 text-primary text-sm font-bold py-3 rounded-xl hover:bg-primary/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
             >
-              💚 Отказался
+              <HeartIcon size={15} filled /> Отказался
             </button>
             <button
               onClick={() => handleMark('bought')}
-              className="flex-1 bg-bg border border-border text-gray-dark text-sm font-bold py-3 rounded-xl hover:border-border-dark active:scale-95 transition-all"
+              className="flex-1 bg-bg border border-border text-gray-dark text-sm font-bold py-3 rounded-xl hover:border-border-dark active:scale-95 transition-all flex items-center justify-center gap-1.5"
             >
-              🛒 Купил
+              <CartIcon size={15} /> Купил
             </button>
           </div>
         )}

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { getCheckResult, getCurrent } from '../lib/storage'
-import { getVerdictMeta } from '../lib/scoring'
 import { useAI, type AIResult } from '../hooks/useAI'
 import { useProfile } from '../hooks/useProfile'
 import { api } from '../api/client'
+import VerdictBadge from '../components/VerdictBadge'
+import { HeartIcon, CartIcon } from '../components/Icons'
+import type { Verdict } from '../lib/scoring'
 
 const TIMER_OPTIONS = [
   { label: '1 день',  days: 1 },
@@ -191,7 +193,7 @@ export default function Result() {
     )
   }
 
-  const v = getVerdictMeta(aiResult.verdict)
+  const suggestion = aiResult.verdict !== 'go' ? pickSuggestion(profile?.interests ?? []) : null
 
   function handleOutcome(outcome: 'stopped' | 'bought') {
     if (checkIdRef.current) api.checks.update(checkIdRef.current, { outcome }).catch(() => {})
@@ -214,9 +216,7 @@ export default function Result() {
       {/* ── Verdict top banner ── */}
       <div className="px-6 py-8" style={{ background: verdictGradient(aiResult.verdict) }}>
         <div className="flex items-center gap-3 mb-5">
-          <span className="text-xs font-black px-3 py-1.5 rounded-full uppercase tracking-wide bg-white/20 text-white backdrop-blur-sm">
-            {v.icon} {v.label}
-          </span>
+          <VerdictBadge verdict={aiResult.verdict as Verdict} size="lg" ghost />
         </div>
         <div className="flex gap-3 items-start">
           <div className="shrink-0 w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mt-0.5">
@@ -231,14 +231,17 @@ export default function Result() {
 
       <div className="flex-1 px-6 py-6 flex flex-col gap-4 overflow-y-auto pb-8">
 
-        {/* Hobby tip — only for wait/veto with interests */}
-        {aiResult.hobbyTip && aiResult.verdict !== 'go' && (
+        {/* Interest suggestion — only for wait/veto */}
+        {suggestion && (
           <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-lg">💡</span>
               <p className="text-dark font-black text-sm">Лучше потрать на это</p>
             </div>
-            <p className="text-gray-dark text-sm leading-relaxed">{aiResult.hobbyTip}</p>
+            <div className="flex gap-3 items-start">
+              <span className="text-xl">{suggestion.icon}</span>
+              <p className="text-gray-dark text-sm leading-relaxed">{suggestion.text}</p>
+            </div>
           </div>
         )}
 
@@ -248,7 +251,7 @@ export default function Result() {
             <p className="text-dark font-medium text-sm">{current.name}</p>
             {current.hasDiscount && <p className="text-[#F86D06] text-xs mt-0.5">🏷️ Со скидкой</p>}
           </div>
-          <p className={`font-black ${v.text}`}>{current.price.toLocaleString('ru')} ₽</p>
+          <p className={`font-black ${aiResult.verdict === 'go' ? 'text-primary' : aiResult.verdict === 'wait' ? 'text-[#F86D06]' : 'text-secondary'}`}>{current.price.toLocaleString('ru')} ₽</p>
         </div>
 
         {/* Timer */}
@@ -287,30 +290,30 @@ export default function Result() {
               <>
                 <button
                   onClick={() => handleOutcome('stopped')}
-                  className="w-full bg-primary text-white font-black py-4 rounded-xl shadow-orange hover:shadow-orange-lg transition-all active:scale-[0.98]"
+                  className="w-full bg-primary text-white font-black py-4 rounded-xl shadow-orange hover:shadow-orange-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 >
-                  🛑 Отказываюсь — сохраняю {current.price.toLocaleString('ru')} ₽
+                  <HeartIcon size={18} filled /> Отказываюсь — сохраняю {current.price.toLocaleString('ru')} ₽
                 </button>
                 <button
                   onClick={() => handleOutcome('bought')}
-                  className="w-full border border-border bg-white text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card"
+                  className="w-full border border-border bg-white text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card flex items-center justify-center gap-2"
                 >
-                  🛒 Всё равно куплю
+                  <CartIcon size={16} /> Всё равно куплю
                 </button>
               </>
             ) : (
               <>
                 <button
                   onClick={() => handleOutcome('bought')}
-                  className="w-full bg-primary text-white font-black py-4 rounded-xl shadow-orange transition-all active:scale-[0.98]"
+                  className="w-full bg-primary text-white font-black py-4 rounded-xl shadow-orange transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 >
-                  🛒 Куплю
+                  <CartIcon size={18} /> Куплю
                 </button>
                 <button
                   onClick={() => handleOutcome('stopped')}
-                  className="w-full border border-border bg-white text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card"
+                  className="w-full border border-border bg-white text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card flex items-center justify-center gap-2"
                 >
-                  🛑 Всё-таки откажусь
+                  <HeartIcon size={16} /> Всё-таки откажусь
                 </button>
               </>
             )}

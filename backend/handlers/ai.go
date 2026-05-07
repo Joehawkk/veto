@@ -139,11 +139,21 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 		return aiCheckResponse{}, false
 	}
 
-	// Override for essential categories — don't trust the model with these
+	// Server-side verdict corrections: don't trust model for these
 	cat := detectCategory(input.Name)
+	// Essential items always go
 	if cat == categoryMedicine || cat == categoryFood || cat == categoryEssentialHygiene ||
 		(cat == categoryBasicClothing && input.Price <= 1500) {
 		parsed.Verdict = "go"
+	}
+	// Impulse items: never "go"; expensive impulse → "veto"
+	if isImpulseItem(input.Name) {
+		if parsed.Verdict == "go" {
+			parsed.Verdict = "wait"
+		}
+		if input.Price > 400 && parsed.Verdict == "wait" {
+			parsed.Verdict = "veto"
+		}
 	}
 
 	parsed.Source = "openrouter"
@@ -334,6 +344,27 @@ func buildFallbackHobbyTip(profile *aiCheckProfile, price float64, verdict strin
 	}
 
 	return ""
+}
+
+func isImpulseItem(name string) bool {
+	lower := strings.ToLower(name)
+	keywords := []string{
+		"кофе", "капучино", "латте", "эспрессо", "американо", "раф", "смузи",
+		"фраппе", "макиато", "матча", "чай", "какао",
+		"ресторан", "рестик", "кафе", "бар", "паб", "клуб",
+		"фастфуд", "фаст-фуд", "макдак", "макдоналдс", "бургер", "пицца",
+		"суши", "роллы", "шаурма", "хинкали", "доставка еды", "доставка",
+		"яндекс еда", "деливери",
+		"снек", "чипсы", "сухарики", "конфет", "шоколад", "мороженое",
+		"пиво", "вино", "алкоголь", "коктейль", "энергетик",
+		"концерт", "кино", "театр", "билет", "вечеринка",
+	}
+	for _, kw := range keywords {
+		if strings.Contains(lower, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 type itemCategory int
@@ -598,20 +629,9 @@ func buildAIPrompt(input aiCheckRequest) string {
 		historySummary = strings.Join(items, "; ")
 	}
 
-	hobbyInstruction := ""
-	if input.Profile != nil && len(input.Profile.Interests) > 0 {
-		hobbyInstruction = fmt.Sprintf(
-			`"hobby_tip": "Только для wait/veto: назови 1 конкретную альтернативу по интересам [%s] за схожую сумму ~%.0f ₽. Формат: конкретный товар/сервис + цена + где купить. Пример: 'Курс по иллюстрации на Stepik — 990 ₽'. Если покупка сама по себе связана с интересами пользователя — верни пустую строку. Для go всегда верни пустую строку."`,
-			strings.Join(input.Profile.Interests, ", "),
-			input.Price,
-		)
-	} else {
-		hobbyInstruction = `"hobby_tip": ""`
-	}
-
 	return fmt.Sprintf(`Ты помощник Veto. Отвечай строго на русском языке.
 Нужен только JSON без markdown и пояснений:
-{"verdict":"go|wait|veto","tip":"2-3 коротких предложения", %s}.
+{"verdict":"go|wait|veto","tip":"2-3 коротких предложения"}.
 
 ПРАВИЛА — нарушать нельзя:
 
@@ -628,21 +648,19 @@ func buildAIPrompt(input aiCheckRequest) string {
 - Любая дорогая покупка (> 3000 ₽) без многодневного обдумывания
 - Спонтанные покупки одежды, гаджетов, аксессуаров, подписок
 
-ОБЩИЙ ПРИНЦИП: твоя работа — ЗАЩИЩАТЬ кошелёк пользователя. При сомнении — "wait" или "veto". "go" только если покупка явно необходима или обдумывалась 3+ дня без тревожных факторов.
+ЦЕНА: сравни указанную цену с типичными ценами в России. Если цена явно заниженная (например AirPods за 500 ₽ — норма 15000+ ₽) — упомяни это как риск (подделка, мошенничество). Если цена высокая для студента — учти в вердикте.
+
+ОБЩИЙ ПРИНЦИП: защищай кошелёк пользователя. При сомнении — "wait" или "veto".
 
 Покупка: %s
 Цена: %.0f ₽
-Товар по скидке/акции: %t (если true — учти, что скидка создаёт искусственное давление "сейчас или никогда"; спроси себя, купил бы без неё)
+Скидка/акция: %t
 Нужно прямо сейчас: %t
 Есть похожее: %t
 Думал о покупке: %s
 Настроение: %s
-Локальный вердикт: %s
 Профиль: %s
-История: %s
-
-Для НЕ-необходимых товаров: учитывай риск импульсивной покупки вечером, ночью, при стрессе и усталости. Совет — честный, короткий, без морализаторства.`,
-		hobbyInstruction,
+История: %s`,
 		input.Name,
 		input.Price,
 		input.HasDiscount,
@@ -650,7 +668,6 @@ func buildAIPrompt(input aiCheckRequest) string {
 		input.Answers.HasSimilar,
 		input.Answers.ThoughtDuration,
 		input.Answers.Mood,
-		input.LocalVerdict,
 		profileSummary,
 		historySummary,
 	)
