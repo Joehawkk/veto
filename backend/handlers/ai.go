@@ -82,7 +82,7 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 		"messages": []map[string]string{
 			{
 				"role":    "system",
-				"content": "You are Veto, a Russian-language impulse purchase assistant. You MUST respond in Russian language only. Return only valid JSON without markdown or code blocks.",
+				"content": "You are Veto — a strict Russian-language impulse purchase guard for students. Your default is to say NO or WAIT. Only approve if the item is clearly essential (medicine, basic groceries) or the user has thought about it for 3+ days with no red flags. Be blunt, not encouraging. You MUST respond in Russian only. Return only valid JSON without markdown.",
 			},
 			{
 				"role":    "user",
@@ -137,6 +137,13 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 	parsed, ok := parseAIContent(data.Choices[0].Message.Content, input.LocalVerdict)
 	if !ok {
 		return aiCheckResponse{}, false
+	}
+
+	// Override for essential categories — don't trust the model with these
+	cat := detectCategory(input.Name)
+	if cat == categoryMedicine || cat == categoryFood || cat == categoryEssentialHygiene ||
+		(cat == categoryBasicClothing && input.Price <= 1500) {
+		parsed.Verdict = "go"
 	}
 
 	parsed.Source = "openrouter"
@@ -349,12 +356,19 @@ func detectCategory(name string) itemCategory {
 		"зелёнка", "зеленка", "активированный уголь", "но-шпа", "парацетамол",
 		"нурофен", "колдрекс", "терафлю", "медикамент", "препарат",
 	}
-	// кофе/чай/сок из кафе — не базовые продукты, обрабатываем как general
-	cafeKeywords := []string{
-		"кофе", "капучино", "латте", "эспрессо", "американо", "раф",
-		"чай из кафе", "смузи", "фраппе", "макиато", "матча",
+	// Всё связанное с едой/развлечениями вне дома — не базовые продукты
+	impulseKeywords := []string{
+		"кофе", "капучино", "латте", "эспрессо", "американо", "раф", "смузи",
+		"фраппе", "макиато", "матча", "чай", "какао",
+		"ресторан", "рестик", "кафе", "бар", "паб", "клуб",
+		"фастфуд", "фаст-фуд", "макдак", "макдоналдс", "бургер", "пицца",
+		"суши", "роллы", "шаурма", "хинкали", "доставка еды", "доставка",
+		"яндекс еда", "деливери", "delivery",
+		"снек", "чипсы", "сухарики", "конфет", "шоколад", "мороженое",
+		"пиво", "вино", "алкоголь", "коктейль", "энергетик",
+		"концерт", "кино", "театр", "билет", "вечеринка",
 	}
-	for _, kw := range cafeKeywords {
+	for _, kw := range impulseKeywords {
 		if strings.Contains(lower, kw) {
 			return categoryGeneral
 		}
@@ -413,17 +427,33 @@ func deriveAIVerdict(input aiCheckRequest) string {
 		return "go"
 	}
 
-	score := 0
+	// Базовый штраф — по умолчанию скептичны
+	score := -1
 
-	// Частые мелкие траты (кофе, перекус) — склоняем к wait/veto
 	lower := strings.ToLower(input.Name)
-	cafePhrases := []string{"кофе", "капучино", "латте", "эспрессо", "американо",
-		"раф", "смузи", "фраппе", "макиато", "матча"}
-	for _, kw := range cafePhrases {
+
+	// Еда вне дома / развлечения / спонтанные траты — строже
+	impulse := []string{
+		"кофе", "капучино", "латте", "эспрессо", "американо", "раф", "смузи",
+		"ресторан", "рестик", "кафе", "бар", "паб", "клуб",
+		"фастфуд", "бургер", "пицца", "суши", "роллы", "шаурма", "доставка",
+		"снек", "чипсы", "конфет", "шоколад", "мороженое",
+		"пиво", "вино", "алкоголь", "коктейль", "энергетик",
+		"концерт", "кино", "театр", "билет", "вечеринка",
+	}
+	for _, kw := range impulse {
 		if strings.Contains(lower, kw) {
-			score -= 2 // кафе-напитки — импульсные траты
+			score -= 2
 			break
 		}
+	}
+
+	// Дорогая покупка — дополнительный штраф
+	if input.Price >= 5000 {
+		score -= 1
+	}
+	if input.Price >= 15000 {
+		score -= 1
 	}
 
 	if input.Answers.NeedNow {
@@ -433,18 +463,20 @@ func deriveAIVerdict(input aiCheckRequest) string {
 	}
 
 	if input.Answers.HasSimilar {
-		score -= 1
+		score -= 2
 	} else {
 		score += 1
 	}
 
 	switch input.Answers.ThoughtDuration {
 	case "3days":
-		score += 2
+		score += 3
 	case "24hours":
 		score += 1
-	case "30min":
+	case "1hour":
 		score -= 1
+	case "30min":
+		score -= 2
 	}
 
 	switch input.Answers.Mood {
@@ -453,14 +485,14 @@ func deriveAIVerdict(input aiCheckRequest) string {
 	case "stressed", "tired":
 		score -= 2
 	case "sad", "angry":
-		score -= 1
+		score -= 2
 	}
 
 	if isRiskyTime() {
 		score -= 1
 	}
 	if input.HasDiscount {
-		score -= 1
+		score -= 1 // скидка создаёт давление, а не необходимость
 	}
 
 	stoppedCount := 0
@@ -473,10 +505,11 @@ func deriveAIVerdict(input aiCheckRequest) string {
 		score -= 1
 	}
 
-	if score >= 3 {
+	// Порог выше — "go" только если реально обдуманно
+	if score >= 4 {
 		return "go"
 	}
-	if score >= 0 {
+	if score >= 1 {
 		return "wait"
 	}
 	return "veto"
@@ -580,13 +613,22 @@ func buildAIPrompt(input aiCheckRequest) string {
 Нужен только JSON без markdown и пояснений:
 {"verdict":"go|wait|veto","tip":"2-3 коротких предложения", %s}.
 
-ВАЖНЫЕ ПРАВИЛА КАТЕГОРИЙ — их нарушать нельзя:
-1. Лекарства, медикаменты, препараты → verdict ВСЕГДА "go". Tip: одобри покупку, при дорогой цене предложи аналог.
-2. Базовые продукты из магазина (хлеб, молоко, вода, крупа, яйца, мясо и т.п.) → verdict ВСЕГДА "go".
-3. Предметы базовой гигиены (зубная паста, мыло, шампунь, прокладки) → verdict ВСЕГДА "go".
-4. Базовая одежда (носки, трусы, нижнее бельё, термобельё) при цене до 1500 ₽ → verdict ВСЕГДА "go".
-5. НЕ является базовым: кофе/чай/напитки из кафе, готовая еда навынос, снеки, фастфуд, алкоголь, энергетики — оценивай как обычную покупку, будь строже при цене выше 200 ₽.
-6. Гаджеты, одежда, развлечения, подписки → оценивай по критериям ниже.
+ПРАВИЛА — нарушать нельзя:
+
+ВСЕГДА "go" (только для):
+- Лекарства, препараты, медикаменты
+- Базовые продукты из магазина: хлеб, молоко, крупа, яйца, мясо, вода, овощи
+- Базовая гигиена: зубная паста, мыло, шампунь, прокладки
+- Базовая одежда: носки, трусы, нижнее бельё при цене до 1500 ₽
+
+ВСЕГДА scrutinize (никогда не "go" автоматически):
+- Еда вне дома: ресторан, кафе, фастфуд, бар, доставка, суши, пицца, бургер
+- Напитки: кофе, коктейли, алкоголь, энергетики
+- Развлечения: концерт, кино, клуб, вечеринка
+- Любая дорогая покупка (> 3000 ₽) без многодневного обдумывания
+- Спонтанные покупки одежды, гаджетов, аксессуаров, подписок
+
+ОБЩИЙ ПРИНЦИП: твоя работа — ЗАЩИЩАТЬ кошелёк пользователя. При сомнении — "wait" или "veto". "go" только если покупка явно необходима или обдумывалась 3+ дня без тревожных факторов.
 
 Покупка: %s
 Цена: %.0f ₽
