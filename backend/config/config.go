@@ -3,6 +3,7 @@ package config
 import (
 	"bufio"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -17,7 +18,14 @@ type Config struct {
 }
 
 func Load() *Config {
+	// Try multiple .env locations: next to exe, CWD, and parent backend dir
+	if exe, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exe)
+		loadDotEnv(filepath.Join(exeDir, ".env"))
+		loadDotEnv(filepath.Join(exeDir, "..", "backend", ".env"))
+	}
 	loadDotEnv(".env")
+
 	return &Config{
 		DatabaseURL:      getEnv("DATABASE_URL", "postgres://veto:veto@localhost:5432/veto?sslmode=disable"),
 		JWTSecret:        getEnv("JWT_SECRET", "dev-secret-key-change-in-production"),
