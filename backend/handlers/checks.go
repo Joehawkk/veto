@@ -17,6 +17,7 @@ func (h *Handler) CreateCheck(c *fiber.Ctx) error {
 		Answers       json.RawMessage `json:"answers"`
 		AIVerdict     string          `json:"ai_verdict"`
 		AIComment     string          `json:"ai_comment"`
+		AISuggestion  string          `json:"ai_suggestion"`
 		AISource      string          `json:"ai_source"`
 		Outcome       string          `json:"outcome"`
 		TimerDeadline *string         `json:"timer_deadline"`
@@ -36,10 +37,10 @@ func (h *Handler) CreateCheck(c *fiber.Ctx) error {
 
 	var id string
 	err := h.db.QueryRow(
-		`INSERT INTO checks (user_id, name, price, has_discount, answers, ai_verdict, ai_comment, ai_source, outcome, timer_deadline)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+		`INSERT INTO checks (user_id, name, price, has_discount, answers, ai_verdict, ai_comment, ai_suggestion, ai_source, outcome, timer_deadline)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
 		userID, input.Name, input.Price, input.HasDiscount,
-		[]byte(input.Answers), input.AIVerdict, input.AIComment, input.AISource, input.Outcome, input.TimerDeadline,
+		[]byte(input.Answers), input.AIVerdict, input.AIComment, input.AISuggestion, input.AISource, input.Outcome, input.TimerDeadline,
 	).Scan(&id)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})

@@ -159,6 +159,7 @@ export default function Result() {
         has_discount: current.hasDiscount,
         answers: checkResult.answers,
         ai_verdict: result.verdict, ai_comment: result.tip,
+        ai_suggestion: result.suggestion || '',
         outcome: 'pending',
       }).then(({ data }) => { checkIdRef.current = data.id }).catch(() => {})
     })
