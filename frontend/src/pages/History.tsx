@@ -18,10 +18,13 @@ function outcomeCardClass(entry: CheckEntry): string {
   }
   if (entry.outcome === 'bought') {
     if (entry.ai_verdict === 'go')   return 'border-green-400 bg-green-50 shadow-[0_0_0_1px_rgba(74,222,128,0.4)]'
-    if (entry.ai_verdict === 'wait') return 'border-amber-400 bg-amber-50 shadow-[0_0_0_1px_rgba(251,191,36,0.4)]'
+    if (entry.ai_verdict === 'wait') return 'border-amber-400 bg-amber-50 shadow-card'
     return 'border-red-400 bg-red-50 shadow-[0_0_0_1px_rgba(248,113,113,0.4)]'
   }
-  return 'border-border bg-white'
+  // pending — ждут решения (не зелёные!)
+  if (entry.ai_verdict === 'go')   return 'border-green-400 bg-green-50 shadow-card'
+  if (entry.ai_verdict === 'wait') return 'border-amber-200 bg-amber-50 shadow-card'
+  return 'border-border bg-white shadow-card'
 }
 
 function getTimeLeft(deadline: string): string {
@@ -93,7 +96,7 @@ function Card({ entry, onOutcome }: { entry: CheckEntry; onOutcome: (id: string,
       )}
 
       {entry.ai_comment && (
-        <p className="text-muted text-xs mt-3 leading-relaxed line-clamp-2">{entry.ai_comment}</p>
+        <p className="text-muted text-sm mt-3 leading-relaxed line-clamp-2">{entry.ai_comment}</p>
       )}
 
       {isPending && (
@@ -130,16 +133,16 @@ export default function History() {
 
       <main className="px-6 py-6 pb-24 max-w-md mx-auto">
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="bg-white border border-border rounded-2xl p-3 text-center shadow-card">
-            <p className="text-primary font-black text-lg">{stats.saved.toLocaleString('ru')}</p>
+          <div className="bg-white border border-border rounded-2xl p-4 text-center shadow-card">
+            <p className="text-primary font-black text-xl">{stats.saved.toLocaleString('ru')}</p>
             <p className="text-muted text-[10px] mt-0.5">₽ сохранено</p>
           </div>
-          <div className="bg-white border border-border rounded-2xl p-3 text-center shadow-card">
-            <p className="text-dark font-black text-lg">{stats.stopped}</p>
+          <div className="bg-white border border-border rounded-2xl p-4 text-center shadow-card">
+            <p className="text-dark font-black text-xl">{stats.stopped}</p>
             <p className="text-muted text-[10px] mt-0.5">отказов</p>
           </div>
-          <div className="bg-white border border-border rounded-2xl p-3 text-center shadow-card">
-            <p className="text-dark font-black text-lg">{stats.bought}</p>
+          <div className="bg-white border border-border rounded-2xl p-4 text-center shadow-card">
+            <p className="text-dark font-black text-xl">{stats.bought}</p>
             <p className="text-muted text-[10px] mt-0.5">куплено</p>
           </div>
         </div>

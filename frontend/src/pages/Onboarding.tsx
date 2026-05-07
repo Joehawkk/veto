@@ -2,36 +2,44 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { type Profile } from '../lib/storage'
+import {
+  StopIcon, BrainIcon, TargetIcon, FrownIcon,
+  StressedFaceIcon, TiredFaceIcon, TagIcon, PhoneIcon, NeutralFaceIcon, UsersIcon,
+  GamepadIcon, MusicNoteIcon, ShirtIcon, LaptopIcon, DumbbellIcon,
+  BookIcon, PlaneIcon, UtensilsIcon, PaletteIcon, FilmIcon,
+} from '../components/Icons'
 
 const TOTAL = 5
 
-const GOALS = [
-  { value: 'Трачу слишком много и хочу остановиться', icon: '🛑' },
-  { value: 'Хочу тратить осознаннее', icon: '🧠' },
-  { value: 'Коплю на конкретную цель', icon: '🎯' },
-  { value: 'Справляюсь с финансовым стрессом', icon: '😤' },
+type IconComponent = React.ComponentType<{ size?: number }>
+
+const GOALS: { value: string; Icon: IconComponent }[] = [
+  { value: 'Трачу слишком много и хочу остановиться', Icon: StopIcon },
+  { value: 'Хочу тратить осознаннее', Icon: BrainIcon },
+  { value: 'Коплю на конкретную цель', Icon: TargetIcon },
+  { value: 'Справляюсь с финансовым стрессом', Icon: FrownIcon },
 ]
 
-const TRIGGERS = [
-  { value: 'Стресс или тревога', icon: '😰' },
-  { value: 'Усталость после учёбы', icon: '😴' },
-  { value: 'Скидки и акции', icon: '🏷️' },
-  { value: 'Реклама в соцсетях', icon: '📱' },
-  { value: 'Скука', icon: '😶' },
-  { value: 'Влияние друзей', icon: '👥' },
+const TRIGGERS: { value: string; Icon: IconComponent }[] = [
+  { value: 'Стресс или тревога', Icon: StressedFaceIcon },
+  { value: 'Усталость после учёбы', Icon: TiredFaceIcon },
+  { value: 'Скидки и акции', Icon: TagIcon },
+  { value: 'Реклама в соцсетях', Icon: PhoneIcon },
+  { value: 'Скука', Icon: NeutralFaceIcon },
+  { value: 'Влияние друзей', Icon: UsersIcon },
 ]
 
-const INTERESTS = [
-  { value: 'Игры', icon: '🎮' },
-  { value: 'Музыка', icon: '🎵' },
-  { value: 'Мода', icon: '👗' },
-  { value: 'Технологии', icon: '💻' },
-  { value: 'Спорт', icon: '🏋️' },
-  { value: 'Книги', icon: '📚' },
-  { value: 'Путешествия', icon: '✈️' },
-  { value: 'Еда', icon: '🍕' },
-  { value: 'Творчество', icon: '🎨' },
-  { value: 'Кино и сериалы', icon: '🎬' },
+const INTERESTS: { value: string; Icon: IconComponent }[] = [
+  { value: 'Игры', Icon: GamepadIcon },
+  { value: 'Музыка', Icon: MusicNoteIcon },
+  { value: 'Мода', Icon: ShirtIcon },
+  { value: 'Технологии', Icon: LaptopIcon },
+  { value: 'Спорт', Icon: DumbbellIcon },
+  { value: 'Книги', Icon: BookIcon },
+  { value: 'Путешествия', Icon: PlaneIcon },
+  { value: 'Еда', Icon: UtensilsIcon },
+  { value: 'Творчество', Icon: PaletteIcon },
+  { value: 'Кино и сериалы', Icon: FilmIcon },
 ]
 
 function Bar({ step }: { step: number }) {
@@ -52,12 +60,22 @@ export default function Onboarding() {
   const navigate = useNavigate()
   const { completeOnboarding } = useProfile()
   const [step, setStep] = useState(1)
-  const [goal, setGoal] = useState('')
-  const [trigger, setTrigger] = useState('')
+  const [goals, setGoals] = useState<string[]>([])
+  const [triggers, setTriggers] = useState<string[]>([])
   const [interests, setInterests] = useState<string[]>([])
   const [monthlySpend, setMonthlySpend] = useState(8000)
   const [savingsTarget, setSavingsTarget] = useState('')
   const [savingsMonths, setSavingsMonths] = useState('')
+
+  function toggleGoal(v: string) {
+    setGoals((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v])
+  }
+
+  function toggleTrigger(v: string) {
+    setTriggers((prev) =>
+      prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
+    )
+  }
 
   function toggleInterest(v: string) {
     setInterests((prev) =>
@@ -67,8 +85,8 @@ export default function Onboarding() {
 
   function finish(skip = false) {
     const profile: Profile = {
-      goal,
-      spendingTrigger: trigger,
+      goal: goals.join('; '),
+      spendingTriggers: triggers,
       interests,
       monthlySpend,
       ...(!skip && savingsTarget
@@ -105,27 +123,31 @@ export default function Onboarding() {
         {step === 1 && (
           <div>
             <h2 className="text-2xl font-black text-dark mb-1">Зачем ты здесь?</h2>
-            <p className="text-muted text-sm mb-8">Выбери, что тебе ближе всего</p>
+            <p className="text-muted text-sm mb-2">Можно выбрать несколько</p>
+            <p className="text-primary text-xs font-bold mb-6">Выбрано: {goals.length}</p>
             <div className="flex flex-col gap-3 mb-8">
-              {GOALS.map((g) => (
-                <button
-                  key={g.value}
-                  onClick={() => setGoal(g.value)}
-                  className={`flex items-center gap-4 px-5 py-4 rounded-2xl border text-left transition-all shadow-card ${
-                    goal === g.value
-                      ? 'border-primary bg-primary/10 text-dark'
-                      : 'border-border bg-white text-gray-dark hover:border-primary/40'
-                  }`}
-                >
-                  <span className="text-2xl shrink-0">{g.icon}</span>
-                  <span className="font-medium text-sm leading-snug">{g.value}</span>
-                  {goal === g.value && <span className="ml-auto text-primary shrink-0">✓</span>}
-                </button>
-              ))}
+              {GOALS.map((g) => {
+                const selected = goals.includes(g.value)
+                return (
+                  <button
+                    key={g.value}
+                    onClick={() => toggleGoal(g.value)}
+                    className={`flex items-center gap-4 px-5 py-4 rounded-2xl border text-left transition-all shadow-card ${
+                      selected
+                        ? 'border-primary bg-primary/10 text-dark'
+                        : 'border-border bg-white text-gray-dark hover:border-primary/40'
+                    }`}
+                  >
+                    <span className="shrink-0 text-primary"><g.Icon size={22} /></span>
+                    <span className="font-medium text-sm leading-snug">{g.value}</span>
+                    {selected && <span className="ml-auto text-primary shrink-0 font-black">✓</span>}
+                  </button>
+                )
+              })}
             </div>
             <button
               onClick={() => setStep(2)}
-              disabled={!goal}
+              disabled={goals.length === 0}
               className="w-full bg-primary text-white font-black py-4 rounded-xl shadow-orange disabled:opacity-40 disabled:shadow-none transition-all"
             >
               Далее →
@@ -137,29 +159,33 @@ export default function Onboarding() {
         {step === 2 && (
           <div>
             <h2 className="text-2xl font-black text-dark mb-1">Что заставляет тебя покупать?</h2>
-            <p className="text-muted text-sm mb-8">Главная причина импульсных трат</p>
+            <p className="text-muted text-sm mb-2">Выбери все, что применимо</p>
+            <p className="text-primary text-xs font-bold mb-6">Выбрано: {triggers.length}</p>
             <div className="flex flex-col gap-3 mb-8">
-              {TRIGGERS.map((t) => (
-                <button
-                  key={t.value}
-                  onClick={() => setTrigger(t.value)}
-                  className={`flex items-center gap-4 px-5 py-4 rounded-2xl border text-left transition-all shadow-card ${
-                    trigger === t.value
-                      ? 'border-primary bg-primary/10 text-dark'
-                      : 'border-border bg-white text-gray-dark hover:border-primary/40'
-                  }`}
-                >
-                  <span className="text-2xl shrink-0">{t.icon}</span>
-                  <span className="font-medium text-sm leading-snug">{t.value}</span>
-                  {trigger === t.value && <span className="ml-auto text-primary shrink-0">✓</span>}
-                </button>
-              ))}
+              {TRIGGERS.map((t) => {
+                const selected = triggers.includes(t.value)
+                return (
+                  <button
+                    key={t.value}
+                    onClick={() => toggleTrigger(t.value)}
+                    className={`flex items-center gap-4 px-5 py-4 rounded-2xl border text-left transition-all shadow-card ${
+                      selected
+                        ? 'border-primary bg-primary/10 text-dark'
+                        : 'border-border bg-white text-gray-dark hover:border-primary/40'
+                    }`}
+                  >
+                    <span className="shrink-0 text-primary"><t.Icon size={22} /></span>
+                    <span className="font-medium text-sm leading-snug">{t.value}</span>
+                    {selected && <span className="ml-auto text-primary shrink-0 font-black">✓</span>}
+                  </button>
+                )
+              })}
             </div>
             <div className="flex gap-3">
               {back(1)}
               <button
                 onClick={() => setStep(3)}
-                disabled={!trigger}
+                disabled={triggers.length === 0}
                 className="flex-1 bg-primary text-white font-black py-4 rounded-xl shadow-orange disabled:opacity-40 disabled:shadow-none transition-all"
               >
                 Далее →
@@ -191,7 +217,7 @@ export default function Onboarding() {
                         : 'border-border bg-white text-gray-dark hover:border-primary/40'
                     }`}
                   >
-                    <span className="text-xl">{i.icon}</span>
+                    <span className="text-primary"><i.Icon size={20} /></span>
                     <span className="font-medium text-sm">{i.value}</span>
                   </button>
                 )

@@ -45,11 +45,57 @@ type aiHistoryEntry struct {
 }
 
 type aiCheckResponse struct {
-	Verdict  string `json:"verdict"`
-	Tip      string `json:"tip"`
-	HobbyTip string `json:"hobby_tip,omitempty"`
-	Source   string `json:"source,omitempty"`
+	Verdict    string `json:"verdict"`
+	Tip        string `json:"tip"`
+	Suggestion string `json:"suggestion,omitempty"`
+	Source     string `json:"source,omitempty"`
 }
+
+const aiSystemPrompt = `Ты — Veto, финансовый коуч для студентов. Анализируй ГЛУБОКО. Отвечай строго JSON без markdown.
+
+Формат: {"verdict":"go|wait|veto","tip":"2-3 предложения","suggestion":"1 предложение про альтернативу"}
+
+═══ АЛГОРИТМ АНАЛИЗА ═══
+
+1. КАТЕГОРИЯ: лекарство/базовые продукты → go. Кофе/фастфуд/доставка → veto.
+2. ЦЕНА vs БЮДЖЕТ: если цена > 25% месячных трат → строже.
+3. ИМПУЛЬС: думал < 1ч + плохое настроение = явный импульс → veto.
+4. ТРИГГЕР: если триггер пользователя совпадает с текущим настроением → назови прямо.
+5. ЦЕЛЬ: если есть цель накоплений → укажи цену как % от цели.
+6. ИСТОРИЯ: если есть похожие покупки → укажи паттерн.
+7. СКИДКА: нейтральный факт, не повод для go.
+8. НОЧЬ (22:00–06:00): выше риск эмоциональных решений.
+
+═══ ВЕРДИКТЫ ═══
+
+"veto": думал <1ч И (плохое настроение ИЛИ есть похожее) ИЛИ еда вне дома >400₽ ИЛИ цена >30% бюджета И думал <24ч
+"go": нужно сейчас И думал 3+ дней И нет похожего И настроение норм/хорошее ИЛИ лекарства/базовое
+"wait": всё остальное
+
+═══ ПРАВИЛА ДЛЯ ПОЛЕЙ ═══
+
+tip (2-3 предложения):
+- Обязательно цифры из данных: % бюджета, % от цели накоплений, конкретные суммы
+- Если совпадает триггер → "Ты сам назвал X своим триггером — и сейчас именно X"
+- Для go: где купить выгоднее (Авито, маркетплейсы, сравни.ру)
+- Тон: умный бро, конкретно. Никаких: "взвесь", "подумай", "не торопись", "поблагодаришь себя"
+
+suggestion (1 предложение — альтернатива через интересы пользователя):
+- Для wait/veto: как эту же сумму потратить на интерес из профиля — КОНКРЕТНО с ценой
+- Пример: "400₽ = 2 месяца Яндекс Музыки без рекламы — раз уж ты любишь музыку"
+- Пример: "400₽ — это инди-игра в Steam для геймера"
+- Для go: suggestion = "" (пустая строка)
+- Если нет интересов: suggestion = "" (пустая строка)
+
+ПЛОХИЕ ПРИМЕРЫ (никогда так):
+- "Откажись и поблагодаришь себя позже" ← клише
+- "Взвесь все за и против" ← клише
+- "Кинопоиск или ИВИ дают первый месяц за 1₽" для кофе ← нерелевантно
+
+ХОРОШИЕ ПРИМЕРЫ:
+- "Кофе за 400₽ в день = 12 000₽/мес. Домашняя кофемашина окупается за месяц."
+- "Ты выбрал 'стресс' как главный триггер — сейчас у тебя стресс. Это учебниковый импульс."
+- "3500₽ = 14% от твоей цели накопить 25 000₽. За 7 таких отказов — цель достигнута."`
 
 func (h *Handler) CheckAI(c *fiber.Ctx) error {
 	var input aiCheckRequest
@@ -65,11 +111,73 @@ func (h *Handler) CheckAI(c *fiber.Ctx) error {
 		input.LocalVerdict = "wait"
 	}
 
-	if response, ok := h.tryOpenRouter(c.BaseURL(), input); ok {
-		return c.JSON(response)
+	// Try Anthropic first (direct API)
+	if resp, ok := h.tryAnthropic(input); ok {
+		return c.JSON(resp)
 	}
 
+	// Try OpenRouter as fallback
+	if resp, ok := h.tryOpenRouter(c.BaseURL(), input); ok {
+		return c.JSON(resp)
+	}
+
+	// Smart deterministic fallback
 	return c.JSON(buildFallbackAIResponse(input))
+}
+
+func (h *Handler) tryAnthropic(input aiCheckRequest) (aiCheckResponse, bool) {
+	if strings.TrimSpace(h.cfg.AnthropicAPIKey) == "" {
+		return aiCheckResponse{}, false
+	}
+
+	payload := map[string]any{
+		"model":      h.cfg.AnthropicModel,
+		"max_tokens": 500,
+		"system":     aiSystemPrompt,
+		"messages": []map[string]string{
+			{"role": "user", "content": buildAIPrompt(input)},
+		},
+	}
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequest(http.MethodPost, "https://api.anthropic.com/v1/messages", bytes.NewReader(body))
+	if err != nil {
+		return aiCheckResponse{}, false
+	}
+
+	req.Header.Set("x-api-key", h.cfg.AnthropicAPIKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return aiCheckResponse{}, false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return aiCheckResponse{}, false
+	}
+
+	var data struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil || len(data.Content) == 0 {
+		return aiCheckResponse{}, false
+	}
+
+	parsed, ok := parseAIContent(data.Content[0].Text, input.LocalVerdict)
+	if !ok {
+		return aiCheckResponse{}, false
+	}
+
+	parsed = applyHardRules(parsed, input)
+	parsed.Source = "anthropic"
+	return parsed, true
 }
 
 func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckResponse, bool) {
@@ -80,36 +188,14 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 	payload := map[string]any{
 		"model": h.cfg.OpenRouterModel,
 		"messages": []map[string]string{
-			{
-				"role": "system",
-				"content": `Ты — Veto, финансовый советник для студентов. Отвечай только на русском. Только JSON без markdown и пояснений.
-
-Формат ответа: {"verdict":"go|wait|veto","tip":"2-3 предложения"}
-
-ЕДА ВНЕ ДОМА (бургер, пицца, суши, кафе, ресторан, доставка, кофе, фастфуд):
-- Вердикт "wait" (до 500 ₽) или "veto" (дороже или явно импульс)
-- Никогда "go" для еды вне дома
-- В tip ОБЯЗАТЕЛЬНО предложи конкретную альтернативу: сколько это стоит дома, что купить в магазине, как сэкономить. Примеры: "Бургер дома выйдет 150-200 ₽ — булка, котлета, овощи. Побалуй себя дешевле.", "За эти деньги купишь продукты на 3 обеда.", "Найди заведение рядом подешевле или купи готовое в магазине."
-
-ОСТАЛЬНЫЕ ПОКУПКИ:
-- По умолчанию "wait" или "veto". "go" только при 3+ днях обдумывания и без красных флагов.
-- При wait/veto — конкретный совет, не просто "не покупай"
-- Если цена подозрительно низкая для товара — упомяни риск подделки`,
-			},
-			{
-				"role":    "user",
-				"content": buildAIPrompt(input),
-			},
+			{"role": "system", "content": aiSystemPrompt},
+			{"role": "user", "content": buildAIPrompt(input)},
 		},
-		"max_tokens":  350,
-		"temperature": 0.8,
+		"max_tokens":  500,
+		"temperature": 0.7,
 	}
 
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return aiCheckResponse{}, false
-	}
-
+	body, _ := json.Marshal(payload)
 	req, err := http.NewRequest(http.MethodPost, "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return aiCheckResponse{}, false
@@ -138,11 +224,7 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return aiCheckResponse{}, false
-	}
-
-	if len(data.Choices) == 0 {
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil || len(data.Choices) == 0 {
 		return aiCheckResponse{}, false
 	}
 
@@ -151,14 +233,19 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 		return aiCheckResponse{}, false
 	}
 
-	// Server-side verdict corrections: don't trust model for these
+	parsed = applyHardRules(parsed, input)
+	parsed.Source = "openrouter"
+	return parsed, true
+}
+
+// applyHardRules enforces category and impulse overrides regardless of AI output.
+func applyHardRules(parsed aiCheckResponse, input aiCheckRequest) aiCheckResponse {
 	cat := detectCategory(input.Name)
-	// Essential items always go
+
 	if cat == categoryMedicine || cat == categoryFood || cat == categoryEssentialHygiene ||
 		(cat == categoryBasicClothing && input.Price <= 1500) {
 		parsed.Verdict = "go"
 	}
-	// Impulse items: never "go"; expensive impulse → "veto"
 	if isImpulseItem(input.Name) {
 		if parsed.Verdict == "go" {
 			parsed.Verdict = "wait"
@@ -167,202 +254,316 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 			parsed.Verdict = "veto"
 		}
 	}
-
-	// Don't let AI be harsher than what the local scoring computes.
-	// e.g. if user said "I need it now" + "no similar items", local gives "wait" — AI can't override to "veto".
 	localVerdict := deriveAIVerdict(input)
 	if localVerdict == "wait" && parsed.Verdict == "veto" {
 		parsed.Verdict = "wait"
 	}
-
-	parsed.Source = "openrouter"
-	return parsed, true
+	return parsed
 }
+
+// ─── Smart deterministic fallback ────────────────────────────────────────────
 
 func buildFallbackAIResponse(input aiCheckRequest) aiCheckResponse {
 	cat := detectCategory(input.Name)
-	verdict := deriveAIVerdict(input)
 
-	// Специальные ответы для жизненно важных категорий
-	if cat == categoryMedicine {
-		tip := fmt.Sprintf("«%s» — это лекарство, бери без сомнений.", input.Name)
+	// Essential categories
+	switch cat {
+	case categoryMedicine:
+		tip := fmt.Sprintf("«%s» — лекарство, берёшь без раздумий.", input.Name)
 		if input.Price > 3000 {
-			tip += " Цена высокая — уточни у фармацевта наличие более доступного аналога."
+			tip += " Цена высокая — спроси фармацевта про дженерик, может быть на 30–50% дешевле."
 		} else {
-			tip += " Здоровье важнее экономии."
+			tip += " Здоровье не та статья, на которой экономят."
 		}
 		return aiCheckResponse{Verdict: "go", Tip: tip, Source: "fallback"}
-	}
 
-	if cat == categoryFood {
-		tip := fmt.Sprintf("«%s» — базовый продукт, покупай смело.", input.Name)
+	case categoryFood:
+		tip := fmt.Sprintf("«%s» — базовые продукты, покупай.", input.Name)
 		if input.HasDiscount {
-			tip += " Со скидкой — тем более хороший момент."
+			tip += " Со скидкой — вообще хорошее время."
 		}
 		return aiCheckResponse{Verdict: "go", Tip: tip, Source: "fallback"}
-	}
 
-	if cat == categoryBasicClothing && input.Price <= 1500 {
-		tip := fmt.Sprintf("«%s» по %.0f ₽ — базовая необходимость, всё ок.", input.Name, input.Price)
-		return aiCheckResponse{Verdict: "go", Tip: tip, Source: "fallback"}
-	}
-
-	if cat == categoryEssentialHygiene {
-		tip := fmt.Sprintf("«%s» — предмет первой необходимости, бери.", input.Name)
-		return aiCheckResponse{Verdict: "go", Tip: tip, Source: "fallback"}
-	}
-
-	// Общая логика для остальных товаров
-	reasons := make([]string, 0, 5)
-
-	if isRiskyTime() {
-		reasons = append(reasons, "сейчас не лучшее время для холодной оценки покупки")
-	}
-	switch input.Answers.Mood {
-	case "stressed", "tired":
-		reasons = append(reasons, "усталость или стресс повышают риск импульсивного решения")
-	case "sad", "angry":
-		reasons = append(reasons, "эмоции могут смещать оценку покупки")
-	}
-	if input.Answers.HasSimilar {
-		reasons = append(reasons, "у тебя уже есть похожая вещь")
-	}
-	if input.Answers.ThoughtDuration == "30min" || input.Answers.ThoughtDuration == "1hour" {
-		reasons = append(reasons, "желание появилось слишком недавно")
-	}
-	if input.HasDiscount {
-		reasons = append(reasons, "скидка сама по себе не делает покупку нужной")
-	}
-	if input.Profile != nil && strings.TrimSpace(input.Profile.Goal) != "" {
-		reasons = append(reasons, fmt.Sprintf("эти %.0f ₽ можно сохранить для цели «%s»", input.Price, input.Profile.Goal))
-	}
-	if len(reasons) == 0 {
-		reasons = append(reasons, "по твоим ответам решение выглядит достаточно обдуманным")
-	}
-
-	h := 0
-	for _, c := range input.Name {
-		h = h*31 + int(c)
-	}
-	h += int(input.Price)
-	if h < 0 {
-		h = -h
-	}
-
-	var nextStep string
-	switch verdict {
-	case "go":
-		steps := []string{
-			fmt.Sprintf("Проверь финальную цену и убедись, что %.0f ₽ вписываются в бюджет.", input.Price),
-			"Если уверен — действуй, ты достаточно подумал.",
-			fmt.Sprintf("%.0f ₽ — сумма обдуманная, покупай без лишних сомнений.", input.Price),
+	case categoryBasicClothing:
+		if input.Price <= 1500 {
+			return aiCheckResponse{
+				Verdict: "go",
+				Tip:     fmt.Sprintf("«%s» по %.0f ₽ — базовая необходимость. Берёшь.", input.Name, input.Price),
+				Source:  "fallback",
+			}
 		}
-		nextStep = steps[h%len(steps)]
-	case "wait":
-		steps := []string{
-			fmt.Sprintf("Дай себе хотя бы день — если через 24 часа желание останется, %.0f ₽ того стоят.", input.Price),
-			"Подожди до завтра и посмотри, будет ли желание таким же сильным.",
-			fmt.Sprintf("Отложи решение на сутки: %.0f ₽ никуда не денутся, а импульс может пройти.", input.Price),
+
+	case categoryEssentialHygiene:
+		return aiCheckResponse{
+			Verdict: "go",
+			Tip:     fmt.Sprintf("«%s» — базовая гигиена. Без вопросов.", input.Name),
+			Source:  "fallback",
 		}
-		nextStep = steps[h%len(steps)]
-	default:
-		steps := []string{
-			fmt.Sprintf("Сохрани %.0f ₽ — это реальный вклад в то, что важнее.", input.Price),
-			"Откажись сейчас и поблагодаришь себя позже.",
-			fmt.Sprintf("%.0f ₽ лучше отложить на действительно нужную покупку.", input.Price),
-		}
-		nextStep = steps[h%len(steps)]
 	}
+
+	verdict := deriveAIVerdict(input)
+	tip := buildSmartTip(verdict, input)
+	suggestion := buildSmartSuggestion(verdict, input)
 
 	return aiCheckResponse{
-		Verdict: verdict,
-		Tip: strings.Join(compactSentences(
-			buildVerdictLead(verdict, input.Name),
-			buildReasonSentence(reasons),
-			nextStep,
-		), " "),
-		HobbyTip: "",
-		Source:   "fallback",
+		Verdict:    verdict,
+		Tip:        tip,
+		Suggestion: suggestion,
+		Source:     "fallback",
 	}
 }
 
-// buildFallbackHobbyTip возвращает предложение альтернативы по хобби при wait/veto.
-func buildFallbackHobbyTip(profile *aiCheckProfile, price float64, verdict string) string {
+func buildSmartTip(verdict string, input aiCheckRequest) string {
+	parts := []string{}
+
+	opening := buildSpecificOpening(verdict, input)
+	if opening != "" {
+		parts = append(parts, opening)
+	}
+
+	// For go — skip budget warnings, add where-to-buy advice
+	if verdict == "go" {
+		actionLine := buildActionLine(verdict, input)
+		if actionLine != "" {
+			parts = append(parts, actionLine)
+		}
+		return strings.Join(parts, " ")
+	}
+
+	// For wait/veto — show budget context and trigger match
+	budgetLine := buildBudgetLine(input)
+	if budgetLine != "" {
+		parts = append(parts, budgetLine)
+	}
+
+	triggerLine := buildTriggerLine(input)
+	if triggerLine != "" {
+		parts = append(parts, triggerLine)
+	}
+
+	actionLine := buildActionLine(verdict, input)
+	if actionLine != "" {
+		parts = append(parts, actionLine)
+	}
+
+	return strings.Join(parts[:min(len(parts), 3)], " ")
+}
+
+func buildSpecificOpening(verdict string, input aiCheckRequest) string {
+	name := input.Name
+	price := input.Price
+
+	isImpulse := isImpulseItem(name)
+
+	switch verdict {
+	case "go":
+		if input.Answers.ThoughtDuration == "3days" && !input.Answers.HasSimilar {
+			return fmt.Sprintf("«%s» — обдуманное решение, 3+ дня — достаточно.", name)
+		}
+		return fmt.Sprintf("«%s» по %.0f ₽ выглядит как осознанная покупка.", name, price)
+
+	case "wait":
+		if isImpulse {
+			return fmt.Sprintf("«%s» за %.0f ₽ — классическая спонтанная трата.", name, price)
+		}
+		if input.Answers.ThoughtDuration == "30min" {
+			return fmt.Sprintf("30 минут — слишком мало, чтобы быть уверенным в «%s».", name)
+		}
+		return fmt.Sprintf("С «%s» не всё однозначно — есть пара вопросов.", name)
+
+	default: // veto
+		if isImpulse {
+			return fmt.Sprintf("«%s» за %.0f ₽ — это точно импульс, не потребность.", name, price)
+		}
+		if input.Answers.HasSimilar {
+			return fmt.Sprintf("У тебя уже есть похожее на «%s» — зачем дублировать?", name)
+		}
+		return fmt.Sprintf("«%s» сейчас — не лучший момент.", name)
+	}
+}
+
+func buildBudgetLine(input aiCheckRequest) string {
+	if input.Profile == nil {
+		return ""
+	}
+	p := input.Profile
+	price := input.Price
+
+	if p.MonthlySpend > 0 {
+		pct := (price / p.MonthlySpend) * 100
+		if pct >= 10 {
+			budgetStr := fmt.Sprintf("%.0f ₽ = %.0f%% твоего месячного бюджета на спонтанные траты", price, pct)
+			if p.SavingsTarget > 0 {
+				goalPct := (price / p.SavingsTarget) * 100
+				return budgetStr + fmt.Sprintf(", и %.0f%% от цели накопить %.0f ₽", goalPct, p.SavingsTarget)
+			}
+			return budgetStr + "."
+		}
+	} else if p.SavingsTarget > 0 {
+		goalPct := (price / p.SavingsTarget) * 100
+		if goalPct >= 5 {
+			return fmt.Sprintf("%.0f ₽ = %.0f%% от твоей цели накопить %.0f ₽.", price, goalPct, p.SavingsTarget)
+		}
+	}
+	return ""
+}
+
+func buildTriggerLine(input aiCheckRequest) string {
+	if input.Profile == nil {
+		return ""
+	}
+	trigger := strings.ToLower(input.Profile.SpendingTrigger)
+	mood := input.Answers.Mood
+
+	stressTrigger := strings.Contains(trigger, "стресс") || strings.Contains(trigger, "тревог")
+	tiredTrigger := strings.Contains(trigger, "усталост") || strings.Contains(trigger, "учёб")
+	bordomTrigger := strings.Contains(trigger, "скук")
+	saleTrigger := strings.Contains(trigger, "скидк") || strings.Contains(trigger, "акци")
+
+	switch {
+	case (stressTrigger) && (mood == "stressed" || mood == "angry"):
+		return "Ты сам назвал стресс своим триггером — сейчас именно он. Классика."
+	case tiredTrigger && mood == "tired":
+		return "Твой триггер — усталость после учёбы. Сейчас ты устал. Мозг ищет быстрое удовольствие."
+	case bordomTrigger && mood == "neutral":
+		return "Скука — твой триггер. Нейтральное настроение без занятия часто ведёт к случайным тратам."
+	case saleTrigger && input.HasDiscount:
+		return "Скидки — твой триггер. Именно сейчас скидка создаёт давление 'купи пока дают'."
+	}
+	return ""
+}
+
+func buildActionLine(verdict string, input aiCheckRequest) string {
+	price := input.Price
+	name := input.Name
+
+	isImpulse := isImpulseItem(name)
+
+	switch verdict {
+	case "go":
+		h := hashStr(name)
+		tips := []string{
+			fmt.Sprintf("Проверь на Авито — б/у «%s» часто на 20–40%% дешевле.", name),
+			fmt.Sprintf("Перед покупкой сравни цены на Яндекс.Маркете — разброс бывает до %.0f ₽.", price*0.15),
+			fmt.Sprintf("Хорошее решение. Убедись, что %.0f ₽ не выходят за бюджет этой недели.", price),
+		}
+		return tips[h%len(tips)]
+
+	case "wait":
+		if isImpulse {
+			return fmt.Sprintf("Подожди 24 часа. Если завтра захочется так же — это уже не импульс.")
+		}
+		h := hashStr(name)
+		tips := []string{
+			"Дай себе 24 часа — импульс либо пройдёт, либо подтвердится.",
+			fmt.Sprintf("Поставь напоминание через 3 дня. Если желание осталось — %.0f ₽ того стоят.", price),
+			fmt.Sprintf("Посмотри на Авито — тот же товар б/у, сэкономишь до %.0f ₽.", price*0.3),
+		}
+		return tips[h%len(tips)]
+
+	default: // veto
+		if isImpulse && price <= 500 {
+			return fmt.Sprintf("Дома выйдет в 5–10 раз дешевле. Сэкономишь %.0f ₽ минимум.", price-price/8)
+		}
+		return fmt.Sprintf("Сохрани %.0f ₽ — это реальный прогресс к тому, что важнее.", price)
+	}
+}
+
+func buildSmartSuggestion(verdict string, input aiCheckRequest) string {
 	if verdict == "go" {
 		return ""
 	}
-	if profile == nil || len(profile.Interests) == 0 {
+	if input.Profile == nil || len(input.Profile.Interests) == 0 {
 		return ""
 	}
 
-	type priceRange struct {
-		max  float64
-		tips map[string]string
+	price := input.Price
+	interest := input.Profile.Interests[0]
+
+	type rangeEntry struct {
+		maxPrice float64
+		tips     map[string]string
 	}
 
-	ranges := []priceRange{
-		{500, map[string]string{
-			"Игры":           "за эту сумму можно взять инди-игру в Steam — там часто топовые тайтлы за 200–500 ₽",
-			"Музыка":         "хватит на месяц стримингового сервиса с хорошей музыкой без рекламы",
-			"Мода":           "загляни на Авито или Vinted — за эту сумму найдётся крутая вещь secondhand",
-			"Технологии":     "купи хорошую техническую книгу или доступ к онлайн-курсу на Stepik",
-			"Спорт":          "на эту сумму можно взять разовое занятие или пробный абонемент в зал",
-			"Книги":          "купи бумажную книгу или оформи подписку Bookmate на месяц",
-			"Путешествия":    "отложи — это первый шаг к новой поездке, даже маленькая сумма в копилке считается",
-			"Еда":            "попробуй новый ресторан или купи ингредиенты для блюда, которое давно хотел приготовить",
-			"Творчество":     "купи новые скетчбуки, краски или другие материалы для любимого хобби",
-			"Кино и сериалы": "хватит на подписку стримингового сервиса с огромным каталогом фильмов",
+	ranges := []rangeEntry{
+		{300, map[string]string{
+			"Игры":           fmt.Sprintf("%.0f ₽ — это инди-игра в Steam по акции, если ты геймер.", price),
+			"Музыка":         fmt.Sprintf("%.0f ₽ = месяц Яндекс Музыки без рекламы.", price),
+			"Мода":           fmt.Sprintf("%.0f ₽ на Авито — найдёшь нормальную вещь secondhand.", price),
+			"Технологии":     fmt.Sprintf("%.0f ₽ — хорошая книга по теме или курс на Stepik.", price),
+			"Спорт":          fmt.Sprintf("%.0f ₽ = разовое занятие в зале или новые резинки.", price),
+			"Книги":          fmt.Sprintf("%.0f ₽ = 1–2 книги на Озоне или месяц Bookmate.", price),
+			"Путешествия":    fmt.Sprintf("%.0f ₽ в копилку — шаг к следующей поездке.", price),
+			"Еда":            fmt.Sprintf("%.0f ₽ на хорошие продукты для блюда, которое давно хотел.", price),
+			"Творчество":     fmt.Sprintf("%.0f ₽ на материалы — скетчбук, краски, новый холст.", price),
+			"Кино и сериалы": fmt.Sprintf("%.0f ₽ = 1.5 месяца Кинопоиска.", price),
 		}},
-		{2000, map[string]string{
-			"Игры":           "за эту сумму можно взять AAA-игру на распродаже или несколько инди-хитов",
-			"Музыка":         "хватит на качественные наушники для бюджета или несколько месяцев стриминга",
-			"Мода":           "отличный вариант — найти качественную вещь на Авито или в секонд-хенде",
-			"Технологии":     "можно купить курс по интересующей теме или несколько профессиональных книг",
-			"Спорт":          "месячный абонемент в зал или набор для домашних тренировок — резинки, коврик",
-			"Книги":          "купи 3–4 книги любимых авторов или годовую подписку на электронную библиотеку",
-			"Путешествия":    "начни копить на следующую поездку — эта сумма уже ощутимый вклад",
-			"Еда":            "закажи набор продуктов для приготовления нескольких новых блюд из разных кухонь",
-			"Творчество":     "купи качественные материалы: хорошие кисти, холст или набор для нового хобби",
-			"Кино и сериалы": "возьми годовую подписку на стриминг или купи коллекционное издание любимого фильма",
+		{1000, map[string]string{
+			"Игры":           fmt.Sprintf("%.0f ₽ — AAA-игра на распродаже в Steam для геймера.", price),
+			"Музыка":         fmt.Sprintf("%.0f ₽ — 5 месяцев Яндекс Музыки без рекламы.", price),
+			"Мода":           fmt.Sprintf("%.0f ₽ на Вайлдберриз — найдёшь то же лучше и дешевле.", price),
+			"Технологии":     fmt.Sprintf("%.0f ₽ — полноценный курс на Stepik по интересующей теме.", price),
+			"Спорт":          fmt.Sprintf("%.0f ₽ = месяц занятий в зале или комплект для дома.", price),
+			"Книги":          fmt.Sprintf("%.0f ₽ = 3–4 книги или годовая подписка на электронную библиотеку.", price),
+			"Путешествия":    fmt.Sprintf("%.0f ₽ в копилку — уже серьёзный вклад в поездку.", price),
+			"Еда":            fmt.Sprintf("%.0f ₽ на кулинарный мастер-класс или дегустацию — новый опыт.", price),
+			"Творчество":     fmt.Sprintf("%.0f ₽ на хорошие инструменты — кисти, планшет Wacom базовый.", price),
+			"Кино и сериалы": fmt.Sprintf("%.0f ₽ = 5 месяцев Кинопоиска с 4K.", price),
 		}},
-		{10000, map[string]string{
-			"Игры":           "за эту сумму реально взять несколько новинок или DLC к любимой игре",
-			"Музыка":         "хватит на хорошие проводные наушники или колонку для дома",
-			"Мода":           "отличный бюджет для качественной базовой вещи или аксессуара на долгие годы",
-			"Технологии":     "можно купить крутой технический гаджет или полноценный обучающий курс",
-			"Спорт":          "купи качественный спортивный инвентарь или несколько месяцев тренировок с тренером",
-			"Книги":          "собери библиотеку из 10–15 книг — это инвестиция в знания на годы",
-			"Путешествия":    "уже серьёзная сумма для короткого трипа внутри страны — добавь и езжай",
-			"Еда":            "закажи кулинарный мастер-класс или купи профессиональный кухонный инструмент",
-			"Творчество":     "инвестируй в качественные инструменты: хорошая камера, планшет для рисования",
-			"Кино и сериалы": "купи саундбар или улучши домашний кинотеатр для лучшего опыта просмотра",
+		{5000, map[string]string{
+			"Игры":           fmt.Sprintf("%.0f ₽ — геймпад или несколько новых игр.", price),
+			"Музыка":         fmt.Sprintf("%.0f ₽ — хорошие наушники или колонка для твоей музыки.", price),
+			"Мода":           fmt.Sprintf("%.0f ₽ на вещь, которая прослужит годами — инвестиция в качество.", price),
+			"Технологии":     fmt.Sprintf("%.0f ₽ — продвинутый курс или технический гаджет.", price),
+			"Спорт":          fmt.Sprintf("%.0f ₽ — качественный спортивный инвентарь на долгий срок.", price),
+			"Книги":          fmt.Sprintf("%.0f ₽ — библиотека из 10+ книг любимого автора или серии.", price),
+			"Путешествия":    fmt.Sprintf("%.0f ₽ — билет на поезд или автобус в соседний город.", price),
+			"Еда":            fmt.Sprintf("%.0f ₽ — качественный кухонный инструмент, который будет служить годами.", price),
+			"Творчество":     fmt.Sprintf("%.0f ₽ — планшет для рисования или профессиональные краски.", price),
+			"Кино и сериалы": fmt.Sprintf("%.0f ₽ — саундбар или улучши домашний просмотр.", price),
 		}},
 		{1e18, map[string]string{
-			"Игры":           "за эту сумму можно взять игровые аксессуары, геймпад или обновить периферию",
-			"Музыка":         "вложи в качественный звук — наушники или колонка изменят восприятие музыки",
-			"Мода":           "купи одну вещь, которая будет служить годами — инвестиция в качество",
-			"Технологии":     "это бюджет для серьёзного гаджета или профессионального оборудования",
-			"Спорт":          "купи качественное снаряжение для любимого вида спорта — это надолго",
-			"Книги":          "собери полную коллекцию любимого автора или серию книг по интересующей теме",
-			"Путешествия":    "это уже приличный вклад в поездку мечты — откладывай регулярно",
-			"Еда":            "купи профессиональный кухонный прибор, который будет радовать каждый день",
-			"Творчество":     "вложи в серьёзный инструмент для творчества — это окупится сторицей",
-			"Кино и сериалы": "улучши домашний кинотеатр: новый монитор, проектор или саундсистема",
+			"Игры":           fmt.Sprintf("%.0f ₽ — серьёзное обновление игровой периферии.", price),
+			"Музыка":         fmt.Sprintf("%.0f ₽ — вложи в звук: наушники, которые изменят восприятие музыки.", price),
+			"Мода":           fmt.Sprintf("%.0f ₽ — одна вещь премиум-качества лучше трёх дешёвых.", price),
+			"Технологии":     fmt.Sprintf("%.0f ₽ — серьёзный гаджет или профессиональное оборудование.", price),
+			"Спорт":          fmt.Sprintf("%.0f ₽ — снаряжение для любимого вида спорта, надолго.", price),
+			"Книги":          fmt.Sprintf("%.0f ₽ — полная коллекция + красивое издание.", price),
+			"Путешествия":    fmt.Sprintf("%.0f ₽ — уже приличная часть бюджета на поездку мечты.", price),
+			"Еда":            fmt.Sprintf("%.0f ₽ — профессиональный кухонный прибор навсегда.", price),
+			"Творчество":     fmt.Sprintf("%.0f ₽ — камера, хороший планшет или полный набор материалов.", price),
+			"Кино и сериалы": fmt.Sprintf("%.0f ₽ — проектор или серьёзный апгрейд домашнего кино.", price),
 		}},
 	}
 
-	interest := profile.Interests[0]
-
 	for _, r := range ranges {
-		if price <= r.max {
+		if price <= r.maxPrice {
 			if tip, ok := r.tips[interest]; ok {
 				return tip
 			}
-			return fmt.Sprintf("отложи %.0f ₽ на что-то, что действительно поддержит твоё увлечение «%s»", price, interest)
 		}
 	}
-
 	return ""
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+func hashStr(s string) int {
+	h := 0
+	for _, c := range s {
+		h = h*31 + int(c)
+	}
+	if h < 0 {
+		h = -h
+	}
+	return h
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func isImpulseItem(name string) bool {
@@ -390,23 +591,15 @@ type itemCategory int
 
 const (
 	categoryGeneral         itemCategory = iota
-	categoryMedicine                     // лекарства — всегда go
-	categoryFood                         // базовая еда/вода — почти всегда go
-	categoryBasicClothing                // носки, бельё, термобельё — go если цена разумная
-	categoryEssentialHygiene             // зубная паста, мыло — go если цена разумная
+	categoryMedicine
+	categoryFood
+	categoryBasicClothing
+	categoryEssentialHygiene
 )
 
 func detectCategory(name string) itemCategory {
 	lower := strings.ToLower(name)
 
-	medicine := []string{
-		"лекарств", "таблетк", "витамин", "антибиотик", "анальгин", "ибупрофен",
-		"аспирин", "мазь", "капли глазные", "капли ушные", "сироп от", "бинт",
-		"пластырь", "жаропонижающ", "обезболивающ", "антисептик", "перекись",
-		"зелёнка", "зеленка", "активированный уголь", "но-шпа", "парацетамол",
-		"нурофен", "колдрекс", "терафлю", "медикамент", "препарат",
-	}
-	// Всё связанное с едой/развлечениями вне дома — не базовые продукты
 	impulseKeywords := []string{
 		"кофе", "капучино", "латте", "эспрессо", "американо", "раф", "смузи",
 		"фраппе", "макиато", "матча", "чай", "какао",
@@ -424,6 +617,13 @@ func detectCategory(name string) itemCategory {
 		}
 	}
 
+	medicine := []string{
+		"лекарств", "таблетк", "витамин", "антибиотик", "анальгин", "ибупрофен",
+		"аспирин", "мазь", "капли глазные", "капли ушные", "сироп от", "бинт",
+		"пластырь", "жаропонижающ", "обезболивающ", "антисептик", "перекись",
+		"зелёнка", "зеленка", "активированный уголь", "но-шпа", "парацетамол",
+		"нурофен", "колдрекс", "терафлю", "медикамент", "препарат",
+	}
 	food := []string{
 		"хлеб", "молоко", "яйц", "гречка", "рис ", "рис,", "картошка", "картофель",
 		"макарон", "вода питьевая", "вода минеральная", " вода", "мясо", "куриц",
@@ -465,11 +665,9 @@ func detectCategory(name string) itemCategory {
 func deriveAIVerdict(input aiCheckRequest) string {
 	cat := detectCategory(input.Name)
 
-	// Лекарства — всегда go
 	if cat == categoryMedicine {
 		return "go"
 	}
-	// Еда, базовая гигиена, базовая одежда при низкой цене — go
 	if cat == categoryFood || cat == categoryEssentialHygiene {
 		return "go"
 	}
@@ -477,12 +675,9 @@ func deriveAIVerdict(input aiCheckRequest) string {
 		return "go"
 	}
 
-	// Базовый штраф — по умолчанию скептичны
 	score := -1
-
 	lower := strings.ToLower(input.Name)
 
-	// Еда вне дома / развлечения / спонтанные траты — строже
 	impulse := []string{
 		"кофе", "капучино", "латте", "эспрессо", "американо", "раф", "смузи",
 		"ресторан", "рестик", "кафе", "бар", "паб", "клуб",
@@ -498,7 +693,6 @@ func deriveAIVerdict(input aiCheckRequest) string {
 		}
 	}
 
-	// Дорогая покупка — дополнительный штраф
 	if input.Price >= 5000 {
 		score -= 1
 	}
@@ -542,7 +736,7 @@ func deriveAIVerdict(input aiCheckRequest) string {
 		score -= 1
 	}
 	if input.HasDiscount {
-		score -= 1 // скидка создаёт давление, а не необходимость
+		score -= 1
 	}
 
 	stoppedCount := 0
@@ -555,7 +749,6 @@ func deriveAIVerdict(input aiCheckRequest) string {
 		score -= 1
 	}
 
-	// Порог выше — "go" только если реально обдуманно
 	if score >= 4 {
 		return "go"
 	}
@@ -565,115 +758,114 @@ func deriveAIVerdict(input aiCheckRequest) string {
 	return "veto"
 }
 
-func buildVerdictLead(verdict, name string) string {
-	h := 0
-	for _, c := range name {
-		h = h*31 + int(c)
-	}
-	if h < 0 {
-		h = -h
-	}
-	switch verdict {
-	case "go":
-		leads := []string{
-			fmt.Sprintf("«%s» — покупка выглядит оправданной.", name),
-			fmt.Sprintf("Похоже, «%s» тебе действительно нужны.", name),
-			fmt.Sprintf("Берёшь «%s» — выглядит как осознанное решение.", name),
-		}
-		return leads[h%len(leads)]
-	case "wait":
-		leads := []string{
-			fmt.Sprintf("С «%s» лучше не спешить.", name),
-			fmt.Sprintf("«%s» — стоит взять паузу перед покупкой.", name),
-			fmt.Sprintf("Не факт, что «%s» нужны прямо сейчас.", name),
-		}
-		return leads[h%len(leads)]
-	default:
-		leads := []string{
-			fmt.Sprintf("«%s» — лучше отложить эту покупку.", name),
-			fmt.Sprintf("Сейчас не лучший момент для «%s».", name),
-			fmt.Sprintf("«%s» выглядит как импульсивное решение — лучше пропустить.", name),
-		}
-		return leads[h%len(leads)]
-	}
-}
-
-func buildReasonSentence(reasons []string) string {
-	if len(reasons) == 0 {
-		return ""
-	}
-
-	text := strings.Join(reasons, ", ")
-	runes := []rune(text)
-	if len(runes) == 0 {
-		return ""
-	}
-	runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
-	return string(runes) + "."
-}
-
-func compactSentences(parts ...string) []string {
-	out := make([]string, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part != "" {
-			out = append(out, part)
-		}
-	}
-	return out
-}
-
 func isRiskyTime() bool {
 	hour := time.Now().Hour()
 	return hour < 6 || hour >= 21
 }
 
 func buildAIPrompt(input aiCheckRequest) string {
-	profileSummary := "без профиля"
+	profileLines := []string{}
 	if input.Profile != nil {
-		profileSummary = fmt.Sprintf(
-			"цель: %s; месячные импульсивные траты: %.0f ₽; интересы: %s",
-			emptyFallback(input.Profile.Goal, "не указана"),
-			input.Profile.MonthlySpend,
-			emptyFallback(strings.Join(input.Profile.Interests, ", "), "не указаны"),
-		)
+		p := input.Profile
+		profileLines = append(profileLines, fmt.Sprintf("Цель пользователя: %s", emptyFallback(p.Goal, "не указана")))
+		profileLines = append(profileLines, fmt.Sprintf("Месячный бюджет на спонтанные траты: %.0f ₽", p.MonthlySpend))
+		if p.MonthlySpend > 0 {
+			pct := (input.Price / p.MonthlySpend) * 100
+			profileLines = append(profileLines, fmt.Sprintf("Цена = %.0f%% месячного бюджета", pct))
+		}
+		if len(p.Interests) > 0 {
+			profileLines = append(profileLines, fmt.Sprintf("Интересы: %s", strings.Join(p.Interests, ", ")))
+		}
+		if p.SpendingTrigger != "" {
+			profileLines = append(profileLines, fmt.Sprintf("Триггер трат: %s", p.SpendingTrigger))
+		}
+		if p.SavingsTarget > 0 {
+			pct := (input.Price / p.SavingsTarget) * 100
+			profileLines = append(profileLines, fmt.Sprintf("Цель накоплений: %.0f ₽ за %d мес — покупка = %.0f%% от цели", p.SavingsTarget, p.SavingsMonths, pct))
+		}
 	}
 
 	historySummary := "нет истории"
 	if len(input.RecentHistory) > 0 {
 		items := make([]string, 0, len(input.RecentHistory))
+		boughtCount := 0
 		for _, item := range input.RecentHistory {
-			items = append(items, fmt.Sprintf("%s %.0f ₽ (%s)", item.Name, item.Price, item.Outcome))
+			items = append(items, fmt.Sprintf("%s %.0f₽ [%s]", item.Name, item.Price, item.Outcome))
+			if item.Outcome == "bought" {
+				boughtCount++
+			}
 		}
 		historySummary = strings.Join(items, "; ")
+		if boughtCount >= 3 {
+			historySummary += fmt.Sprintf(" | ПАТТЕРН: %d покупок подряд — возможен импульсивный цикл", boughtCount)
+		}
 	}
 
-	impulse := isImpulseItem(input.Name)
-	impulseHint := ""
-	if impulse {
-		impulseHint = "\nЭто ЕДА ВНЕ ДОМА / импульсная трата — обязательно предложи в tip конкретную дешёвую альтернативу (приготовить дома, купить в магазине, найти дешевле)."
+	hour := time.Now().Hour()
+	timeNote := ""
+	if hour < 6 || hour >= 22 {
+		timeNote = "\nВРЕМЯ: ночь — повышенный риск эмоциональных решений."
+	} else if hour >= 18 {
+		timeNote = "\nВРЕМЯ: вечер — усталость влияет на решения."
 	}
 
-	return fmt.Sprintf(`Покупка: %s
-Цена: %.0f ₽
-Скидка/акция: %t
-Нужно прямо сейчас: %t
-Есть похожее: %t
-Думал о покупке: %s
+	impulseNote := ""
+	if isImpulseItem(input.Name) {
+		impulseNote = "\nКАТЕГОРИЯ: еда/напитки вне дома — в suggestion укажи домашнюю альтернативу с ценой."
+	}
+
+	thoughtMap := map[string]string{
+		"30min": "30 минут", "1hour": "1 час",
+		"24hours": "1 день", "3days": "3+ дня",
+	}
+	moodMap := map[string]string{
+		"good": "хорошее", "neutral": "нейтральное",
+		"sad": "грустное", "angry": "злой/раздражён",
+		"stressed": "стресс/тревога", "tired": "усталость",
+	}
+
+	thought := thoughtMap[input.Answers.ThoughtDuration]
+	if thought == "" {
+		thought = input.Answers.ThoughtDuration
+	}
+	mood := moodMap[input.Answers.Mood]
+	if mood == "" {
+		mood = input.Answers.Mood
+	}
+
+	return fmt.Sprintf(`=== АНАЛИЗ ===
+Товар: «%s»
+Цена: %.0f ₽%s
+Нужно сейчас: %s
+Есть похожее: %s
+Думал: %s
 Настроение: %s
-Профиль: %s
-История: %s%s`,
+%s
+История: %s%s%s`,
 		input.Name,
 		input.Price,
-		input.HasDiscount,
-		input.Answers.NeedNow,
-		input.Answers.HasSimilar,
-		input.Answers.ThoughtDuration,
-		input.Answers.Mood,
-		profileSummary,
+		func() string {
+			if input.HasDiscount {
+				return " (скидка)"
+			}
+			return ""
+		}(),
+		boolRu(input.Answers.NeedNow),
+		boolRu(input.Answers.HasSimilar),
+		thought,
+		mood,
+		strings.Join(profileLines, "\n"),
 		historySummary,
-		impulseHint,
+		timeNote,
+		impulseNote,
 	)
+}
+
+func boolRu(b bool) string {
+	if b {
+		return "да"
+	}
+	return "нет"
 }
 
 func parseAIContent(content, fallbackVerdict string) (aiCheckResponse, bool) {
@@ -684,7 +876,11 @@ func parseAIContent(content, fallbackVerdict string) (aiCheckResponse, bool) {
 		return aiCheckResponse{}, false
 	}
 
-	var parsed aiCheckResponse
+	var parsed struct {
+		Verdict    string `json:"verdict"`
+		Tip        string `json:"tip"`
+		Suggestion string `json:"suggestion"`
+	}
 	if err := json.Unmarshal([]byte(content[start:end+1]), &parsed); err != nil {
 		return aiCheckResponse{}, false
 	}
@@ -696,8 +892,12 @@ func parseAIContent(content, fallbackVerdict string) (aiCheckResponse, bool) {
 	if parsed.Tip == "" {
 		return aiCheckResponse{}, false
 	}
-	parsed.HobbyTip = strings.TrimSpace(parsed.HobbyTip)
-	return parsed, true
+
+	return aiCheckResponse{
+		Verdict:    parsed.Verdict,
+		Tip:        parsed.Tip,
+		Suggestion: strings.TrimSpace(parsed.Suggestion),
+	}, true
 }
 
 func isValidVerdict(verdict string) bool {

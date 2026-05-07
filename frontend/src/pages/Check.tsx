@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCurrent, setCheckResult, type CheckAnswers, type MoodValue, type ThoughtDuration } from '../lib/storage'
 import { getLocalVerdict } from '../lib/scoring'
@@ -9,50 +9,6 @@ import {
 } from '../components/Icons'
 
 type StepKey = 'needNow' | 'hasSimilar' | 'duration' | 'mood'
-const STEPS: StepKey[] = ['needNow', 'hasSimilar', 'duration', 'mood']
-
-const DURATION_ICON: Record<ThoughtDuration, JSX.Element> = {
-  '30min':   <ZapIcon size={28} />,
-  '1hour':   <CoffeeIcon size={28} />,
-  '24hours': <MoonIcon size={28} />,
-  '3days':   <CalendarIcon size={28} />,
-}
-
-const MOOD_ICON: Record<MoodValue, JSX.Element> = {
-  good:     <SmileFaceIcon size={32} />,
-  neutral:  <NeutralFaceIcon size={32} />,
-  sad:      <SadFaceIcon size={32} />,
-  angry:    <AngryFaceIcon size={32} />,
-  stressed: <StressedFaceIcon size={32} />,
-  tired:    <TiredFaceIcon size={32} />,
-}
-
-const STEP_META: Record<StepKey, { title: string; subtitle: string; category: string; categoryColor: string }> = {
-  needNow: {
-    title: 'Ты реально нуждаешься в этом прямо сейчас?',
-    subtitle: 'Не "хочу", а именно "нужно" — сегодня',
-    category: 'ПОТРЕБНОСТЬ',
-    categoryColor: 'text-primary bg-primary/10',
-  },
-  hasSimilar: {
-    title: 'Есть ли у тебя что-то похожее на этот товар?',
-    subtitle: 'Похожее по функции, даже если не идентичное',
-    category: 'ПОТРЕБНОСТЬ',
-    categoryColor: 'text-primary bg-primary/10',
-  },
-  duration: {
-    title: 'Как долго ты думал об этой покупке?',
-    subtitle: 'Честно — когда впервые захотел?',
-    category: 'ЛОГИКА',
-    categoryColor: 'text-[#F86D06] bg-[#FFDE8A]/50',
-  },
-  mood: {
-    title: 'Как ты сейчас себя чувствуешь?',
-    subtitle: 'Эмоции влияют на решения о покупках',
-    category: 'ЭМОЦИИ',
-    categoryColor: 'text-secondary bg-secondary/10',
-  },
-}
 
 const DURATION_OPTIONS: { value: ThoughtDuration; label: string; sub: string }[] = [
   { value: '30min',   label: '30 минут', sub: 'только что захотел' },
@@ -70,149 +26,229 @@ const MOOD_OPTIONS: { value: MoodValue; label: string; good: boolean }[] = [
   { value: 'tired',    label: 'Устал',      good: false },
 ]
 
+const CATEGORIES: Record<StepKey, { title: string; subtitle: string; category: string; categoryColor: string }> = {
+  needNow: {
+    title: 'Тебе реально нужно это прямо сейчас?',
+    subtitle: 'Не "хочу", а именно "нужно" — сегодня',
+    category: 'ПОТРЕБНОСТЬ',
+    categoryColor: 'text-primary bg-primary/10',
+  },
+  hasSimilar: {
+    title: 'Есть ли у тебя что-то похожее?',
+    subtitle: 'Похожее по функции, даже если не идентичное',
+    category: 'ПОТРЕБНОСТЬ',
+    categoryColor: 'text-primary bg-primary/10',
+  },
+  duration: {
+    title: 'Как долго ты думаешь об этой покупке?',
+    subtitle: 'Честно — когда впервые захотел?',
+    category: 'ЛОГИКА',
+    categoryColor: 'text-[#F86D06] bg-[#FFDE8A]/50',
+  },
+  mood: {
+    title: 'Как ты сейчас себя чувствуешь?',
+    subtitle: 'Эмоции влияют на решения о покупках',
+    category: 'ЭМОЦИИ',
+    categoryColor: 'text-secondary bg-secondary/10',
+  },
+}
+
 export default function Check() {
   const navigate = useNavigate()
   const [current] = useState(() => getCurrent())
-  const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Partial<CheckAnswers>>({})
-  const [visible, setVisible] = useState(true)
 
-  useEffect(() => { if (!current) navigate('/') }, [current, navigate])
-  if (!current) return null
-
-  const stepKey = STEPS[step]
-  const meta = STEP_META[stepKey]
-  const progress = (step / STEPS.length) * 100
-
-  function advance(partial: Partial<CheckAnswers>) {
-    const newAnswers = { ...answers, ...partial }
-    setVisible(false)
-    setTimeout(() => {
-      if (step < STEPS.length - 1) {
-        setAnswers(newAnswers)
-        setStep(step + 1)
-        setVisible(true)
-      } else {
-        const complete = newAnswers as CheckAnswers
-        const localVerdict = getLocalVerdict(complete)
-        setCheckResult({ answers: complete, localVerdict })
-        navigate('/result')
-      }
-    }, 200)
+  if (!current) {
+    navigate('/')
+    return null
   }
 
-  function goBack() {
-    if (step === 0) { navigate('/'); return }
-    setVisible(false)
-    setTimeout(() => { setStep(step - 1); setVisible(true) }, 150)
+  function update(key: keyof CheckAnswers, value: any) {
+    setAnswers(prev => ({ ...prev, [key]: value }))
+  }
+
+  function isComplete(): boolean {
+    return (
+      answers.needNow !== undefined &&
+      answers.hasSimilar !== undefined &&
+      answers.thoughtDuration !== undefined &&
+      answers.mood !== undefined
+    )
+  }
+
+  function handleSubmit() {
+    const complete = answers as CheckAnswers
+    const localVerdict = getLocalVerdict(complete)
+    setCheckResult({ answers: complete, localVerdict })
+    navigate('/result')
+  }
+
+  const DURATION_ICON: Record<ThoughtDuration, JSX.Element> = {
+    '30min':   <ZapIcon size={24} />,
+    '1hour':   <CoffeeIcon size={24} />,
+    '24hours': <MoonIcon size={24} />,
+    '3days':   <CalendarIcon size={24} />,
+  }
+
+  const MOOD_ICON: Record<MoodValue, JSX.Element> = {
+    good:     <SmileFaceIcon size={28} />,
+    neutral:  <NeutralFaceIcon size={28} />,
+    sad:      <SadFaceIcon size={28} />,
+    angry:    <AngryFaceIcon size={28} />,
+    stressed: <StressedFaceIcon size={28} />,
+    tired:    <TiredFaceIcon size={28} />,
   }
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
-      {/* Progress bar */}
-      <div className="w-full bg-border h-1">
-        <div
-          className="h-1 transition-all duration-500"
-          style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #FD7203, #F86D06)' }}
-        />
-      </div>
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-border">
+        <button onClick={() => navigate('/')} className="text-muted hover:text-dark transition-colors text-sm font-medium">
+          ← Назад
+        </button>
+        <p className="text-muted text-sm font-medium">Проверка покупки</p>
+        <div className="w-16" />
+      </header>
 
-      <main className="flex-1 flex flex-col px-6 py-8 max-w-md mx-auto w-full">
-        {/* Nav */}
-        <div className="flex items-center justify-between mb-10">
-          <button onClick={goBack} className="text-muted hover:text-dark transition-colors text-sm font-medium">
-            ← Назад
-          </button>
-          <p className="text-muted text-sm font-medium">Вопрос {step + 1} из {STEPS.length}</p>
-          <div className="w-16" />
-        </div>
-
-        {/* Question */}
-        <div
-          className="flex-1 flex flex-col justify-center transition-all duration-200"
-          style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(-10px)' }}
-        >
-          <div className="bg-white border border-border rounded-3xl p-8 mb-8 shadow-card">
-            <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-6 ${meta.categoryColor}`}>
-              {meta.category}
-            </span>
-            <h2 className="text-2xl font-black text-dark leading-snug mb-3">{meta.title}</h2>
-            <p className="text-muted text-sm">{meta.subtitle}</p>
-          </div>
-
-          {/* Yes / No */}
-          {(stepKey === 'needNow' || stepKey === 'hasSimilar') && (
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                onClick={() => advance({ [stepKey]: true })}
-                className="flex flex-col items-center justify-center gap-3 py-9 rounded-2xl border-2 border-primary/30 bg-primary/5 text-primary hover:bg-primary/15 hover:border-primary active:scale-95 transition-all shadow-card"
-              >
-                <CheckMarkIcon size={34} />
-                <span className="font-black text-lg">Да</span>
-              </button>
-              <button
-                onClick={() => advance({ [stepKey]: false })}
-                className="flex flex-col items-center justify-center gap-3 py-9 rounded-2xl border-2 border-border bg-white text-secondary hover:border-secondary/40 hover:bg-secondary/5 active:scale-95 transition-all shadow-card"
-              >
-                <XIcon size={34} />
-                <span className="font-black text-lg text-gray-dark">Нет</span>
-              </button>
-            </div>
-          )}
-
-          {/* Duration */}
-          {stepKey === 'duration' && (
-            <div className="grid grid-cols-2 gap-3">
-              {DURATION_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => advance({ thoughtDuration: opt.value })}
-                  className="flex flex-col items-center gap-2 py-5 px-3 rounded-2xl border-2 border-border bg-white hover:border-primary hover:bg-primary/5 active:scale-95 transition-all shadow-card"
-                >
-                  <span className="text-[#F86D06]">{DURATION_ICON[opt.value]}</span>
-                  <span className="text-dark font-black text-sm">{opt.label}</span>
-                  <span className="text-muted text-xs">{opt.sub}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Mood */}
-          {stepKey === 'mood' && (
-            <div className="grid grid-cols-3 gap-3">
-              {MOOD_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => advance({ mood: opt.value })}
-                  className={`flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-all active:scale-95 shadow-card ${
-                    opt.good
-                      ? 'border-primary/20 bg-primary/5 hover:border-primary hover:bg-primary/10'
-                      : 'border-border bg-white hover:border-secondary/40 hover:bg-secondary/5'
-                  }`}
-                >
-                  <span className={opt.good ? 'text-primary' : 'text-secondary'}>
-                    {MOOD_ICON[opt.value]}
-                  </span>
-                  <span className="text-xs font-bold text-gray-dark">{opt.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* Bottom item card */}
-      <div className="sticky bottom-0 bg-white border-t border-border px-6 py-4 shadow-[0_-2px_12px_rgba(6,6,6,0.06)]">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <div>
-            <p className="text-dark font-bold text-sm">{current.name}</p>
-            <p className="text-muted text-xs flex items-center gap-1">
-              {current.hasDiscount ? <><TagIcon size={11} /> Со скидкой</> : 'Проверяем покупку'}
-            </p>
-          </div>
+      <main className="flex-1 overflow-y-auto px-6 py-6 max-w-md mx-auto w-full">
+        <div className="mb-6">
+          <h1 className="text-dark font-black text-xl mb-1">{current.name}</h1>
           <p className="text-primary font-black text-lg">{current.price.toLocaleString('ru')} ₽</p>
+          {current.hasDiscount && (
+            <p className="text-[#F86D06] text-xs mt-1 flex items-center gap-1"><TagIcon size={11} /> Со скидкой</p>
+          )}
         </div>
-      </div>
+
+        {/* Question 1: Need now */}
+        <div className="bg-white border border-border rounded-2xl p-5 mb-4 shadow-card">
+          <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-3 ${CATEGORIES.needNow.categoryColor}`}>
+            {CATEGORIES.needNow.category}
+          </span>
+          <h2 className="text-lg font-black text-dark mb-1">{CATEGORIES.needNow.title}</h2>
+          <p className="text-muted text-xs mb-4">{CATEGORIES.needNow.subtitle}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => update('needNow', true)}
+              className={`flex flex-col items-center gap-2 py-6 rounded-xl border-2 transition-all active:scale-95 ${
+                answers.needNow === true
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-bg hover:border-primary/30'
+              }`}
+            >
+              <CheckMarkIcon size={28} />
+              <span className="font-black text-base">Да</span>
+            </button>
+            <button
+              onClick={() => update('needNow', false)}
+              className={`flex flex-col items-center gap-2 py-6 rounded-xl border-2 transition-all active:scale-95 ${
+                answers.needNow === false
+                  ? 'border-secondary bg-secondary/10 text-secondary'
+                  : 'border-border bg-bg hover:border-secondary/30'
+              }`}
+            >
+              <XIcon size={28} />
+              <span className="font-black text-base text-gray-dark">Нет</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Question 2: Has similar */}
+        <div className="bg-white border border-border rounded-2xl p-5 mb-4 shadow-card">
+          <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-3 ${CATEGORIES.hasSimilar.categoryColor}`}>
+            {CATEGORIES.hasSimilar.category}
+          </span>
+          <h2 className="text-lg font-black text-dark mb-1">{CATEGORIES.hasSimilar.title}</h2>
+          <p className="text-muted text-xs mb-4">{CATEGORIES.hasSimilar.subtitle}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => update('hasSimilar', true)}
+              className={`flex flex-col items-center gap-2 py-6 rounded-xl border-2 transition-all active:scale-95 ${
+                answers.hasSimilar === true
+                  ? 'border-secondary bg-secondary/10 text-secondary'
+                  : 'border-border bg-bg hover:border-secondary/30'
+              }`}
+            >
+              <CheckMarkIcon size={28} />
+              <span className="font-black text-base text-gray-dark">Да</span>
+            </button>
+            <button
+              onClick={() => update('hasSimilar', false)}
+              className={`flex flex-col items-center gap-2 py-6 rounded-xl border-2 transition-all active:scale-95 ${
+                answers.hasSimilar === false
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-bg hover:border-primary/30'
+              }`}
+            >
+              <XIcon size={28} />
+              <span className="font-black text-base">Нет</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Question 3: Duration */}
+        <div className="bg-white border border-border rounded-2xl p-5 mb-4 shadow-card">
+          <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-3 ${CATEGORIES.duration.categoryColor}`}>
+            {CATEGORIES.duration.category}
+          </span>
+          <h2 className="text-lg font-black text-dark mb-1">{CATEGORIES.duration.title}</h2>
+          <p className="text-muted text-xs mb-4">{CATEGORIES.duration.subtitle}</p>
+          <div className="grid grid-cols-2 gap-3">
+            {DURATION_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => update('thoughtDuration', opt.value)}
+                className={`flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 transition-all active:scale-95 ${
+                  answers.thoughtDuration === opt.value
+                    ? 'border-[#F86D06] bg-[#FFDE8A]/30'
+                    : 'border-border bg-bg hover:border-[#F86D06]/30'
+                }`}
+              >
+                <span className="text-[#F86D06]">{DURATION_ICON[opt.value]}</span>
+                <span className="text-dark font-black text-sm">{opt.label}</span>
+                <span className="text-muted text-[10px]">{opt.sub}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Question 4: Mood */}
+        <div className="bg-white border border-border rounded-2xl p-5 mb-6 shadow-card">
+          <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-3 ${CATEGORIES.mood.categoryColor}`}>
+            {CATEGORIES.mood.category}
+          </span>
+          <h2 className="text-lg font-black text-dark mb-1">{CATEGORIES.mood.title}</h2>
+          <p className="text-muted text-xs mb-4">{CATEGORIES.mood.subtitle}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {MOOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => update('mood', opt.value)}
+                className={`flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 transition-all active:scale-95 ${
+                  answers.mood === opt.value
+                    ? opt.good
+                      ? 'border-primary bg-primary/10'
+                      : 'border-secondary bg-secondary/10'
+                    : 'border-border bg-bg hover:border-primary/20'
+                }`}
+              >
+                <span className={opt.good ? 'text-primary' : 'text-secondary'}>
+                  {MOOD_ICON[opt.value]}
+                </span>
+                <span className="text-[10px] font-bold text-gray-dark">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Submit button */}
+        <button
+          onClick={handleSubmit}
+          disabled={!isComplete()}
+          className="w-full bg-primary text-white font-black py-4 rounded-xl shadow-orange disabled:opacity-40 disabled:shadow-none transition-all active:scale-[0.98] mb-8"
+        >
+          Получить вердикт →
+        </button>
+      </main>
     </div>
   )
 }

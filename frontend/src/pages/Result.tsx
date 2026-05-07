@@ -5,7 +5,7 @@ import { useAI, type AIResult } from '../hooks/useAI'
 import { useProfile } from '../hooks/useProfile'
 import { api } from '../api/client'
 import VerdictBadge from '../components/VerdictBadge'
-import { HeartIcon, CartIcon, ClockIcon, WarningIcon, TagIcon, LightbulbIcon, ListIcon, BotIcon } from '../components/Icons'
+import { HeartIcon, CartIcon, ClockIcon, TagIcon, LightbulbIcon, ListIcon, BotIcon, CheckCircleIcon } from '../components/Icons'
 import type { Verdict } from '../lib/scoring'
 
 const TIMER_OPTIONS = [
@@ -15,23 +15,7 @@ const TIMER_OPTIONS = [
   { label: 'Неделю', days: 7 },
 ]
 
-const INTEREST_SUGGESTIONS: Record<string, string> = {
-  'Игры':           'Поищи игру на распродаже в Steam — часто топ за 100–300 ₽',
-  'Музыка':         'Месяц Яндекс Музыки или Spotify — музыка без рекламы за ~200 ₽',
-  'Мода':           'Загляни на Авито или Vinted — те же вещи в разы дешевле',
-  'Технологии':     'Инвестируй в знания: курс на Stepik или YouTube-плейлист',
-  'Спорт':          'Пробный день в зале или новый маршрут для пробежки',
-  'Книги':          'Bookmate или электронка в библиотеке — тысячи книг бесплатно',
-  'Путешествия':    'Отложи эти деньги в копилку — ближе к поездке мечты!',
-  'Еда':            'Попробуй приготовить что-то новое — вложи деньги в хорошие продукты',
-  'Творчество':     'Canva Pro или новые краски/материалы для проекта',
-  'Кино и сериалы': 'Кинопоиск или ИВИ дают первый месяц за 1 ₽',
-}
 
-function pickSuggestion(interests: string[]): string | null {
-  for (const i of interests) if (INTEREST_SUGGESTIONS[i]) return INTEREST_SUGGESTIONS[i]
-  return null
-}
 
 /* ── Loading screen ────────────────────────────── */
 function LoadingScreen({ name, price }: { name: string; price: number }) {
@@ -76,7 +60,7 @@ function CelebrationScreen({
   name, price, totalSaved, suggestion, onHome, onHistory,
 }: {
   name: string; price: number; totalSaved: number
-  suggestion: { icon: string; text: string } | null
+  suggestion: string | null
   onHome: () => void; onHistory: () => void
 }) {
   return (
@@ -85,8 +69,8 @@ function CelebrationScreen({
         {/* Animated circle */}
         <div className="relative inline-flex items-center justify-center">
           <div className="absolute w-28 h-28 rounded-full animate-ping [animation-duration:2s]" style={{ background: 'rgba(253,114,3,0.12)' }} />
-          <div className="relative w-20 h-20 rounded-full flex items-center justify-center shadow-orange" style={{ background: 'linear-gradient(135deg, #FD7203, #F86D06)' }}>
-            <span className="text-4xl">💚</span>
+          <div className="relative w-20 h-20 rounded-full flex items-center justify-center shadow-orange text-white" style={{ background: 'linear-gradient(135deg, #FD7203, #F86D06)' }}>
+            <CheckCircleIcon size={36} />
           </div>
         </div>
 
@@ -114,10 +98,10 @@ function CelebrationScreen({
             )}
             {suggestion && (
               <div className="flex gap-3 items-start pt-3 border-t border-border">
-                <span className="text-2xl">{suggestion.icon}</span>
+                <span className="text-primary shrink-0"><LightbulbIcon size={18} /></span>
                 <div>
                   <p className="text-muted text-[10px] uppercase tracking-wide font-bold mb-1">Лучше потрать на интересы:</p>
-                  <p className="text-gray-dark text-sm leading-relaxed">{suggestion.text}</p>
+                  <p className="text-gray-dark text-sm leading-relaxed">{suggestion}</p>
                 </div>
               </div>
             )}
@@ -184,7 +168,7 @@ export default function Result() {
   if (!aiResult) return <LoadingScreen name={current.name} price={current.price} />
 
   if (showCelebration) {
-    const suggestion = pickSuggestion(profile?.interests ?? [])
+    const suggestion = aiResult.suggestion || null
     return (
       <CelebrationScreen
         name={current.name} price={current.price} totalSaved={0}
@@ -193,7 +177,7 @@ export default function Result() {
     )
   }
 
-  const suggestion = aiResult.verdict !== 'go' ? pickSuggestion(profile?.interests ?? []) : null
+  const suggestion = aiResult.verdict !== 'go' ? (aiResult.suggestion || null) : null
 
   function handleOutcome(outcome: 'stopped' | 'bought') {
     if (checkIdRef.current) api.checks.update(checkIdRef.current, { outcome }).catch(() => {})

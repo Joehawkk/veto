@@ -139,8 +139,19 @@ export default function HistoryDetail() {
               <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg, #FD7203, #F86D06)' }}>
                 <BotIcon size={16} />
               </div>
-              <div>
-                <p className="text-muted text-[10px] font-bold uppercase tracking-widest mb-1.5">AI вердикт</p>
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-muted text-[10px] font-bold uppercase tracking-widest">AI вердикт</p>
+                  {entry.ai_source && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      entry.ai_source === 'openrouter'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {entry.ai_source === 'openrouter' ? 'OpenRouter' : 'Локальный'}
+                    </span>
+                  )}
+                </div>
                 <p className="text-gray-dark text-sm leading-relaxed">{entry.ai_comment}</p>
               </div>
             </div>

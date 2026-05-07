@@ -17,6 +17,7 @@ func (h *Handler) CreateCheck(c *fiber.Ctx) error {
 		Answers       json.RawMessage `json:"answers"`
 		AIVerdict     string          `json:"ai_verdict"`
 		AIComment     string          `json:"ai_comment"`
+		AISource      string          `json:"ai_source"`
 		Outcome       string          `json:"outcome"`
 		TimerDeadline *string         `json:"timer_deadline"`
 	}
@@ -35,10 +36,10 @@ func (h *Handler) CreateCheck(c *fiber.Ctx) error {
 
 	var id string
 	err := h.db.QueryRow(
-		`INSERT INTO checks (user_id, name, price, has_discount, answers, ai_verdict, ai_comment, outcome, timer_deadline)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+		`INSERT INTO checks (user_id, name, price, has_discount, answers, ai_verdict, ai_comment, ai_source, outcome, timer_deadline)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
 		userID, input.Name, input.Price, input.HasDiscount,
-		[]byte(input.Answers), input.AIVerdict, input.AIComment, input.Outcome, input.TimerDeadline,
+		[]byte(input.Answers), input.AIVerdict, input.AIComment, input.AISource, input.Outcome, input.TimerDeadline,
 	).Scan(&id)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -58,7 +59,7 @@ func (h *Handler) ListChecks(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	rows, err := h.db.Query(
-		`SELECT id, name, price, has_discount, answers, ai_verdict, ai_comment, outcome, timer_deadline, created_at
+		`SELECT id, name, price, has_discount, answers, ai_verdict, ai_comment, ai_source, outcome, timer_deadline, created_at
 		 FROM checks WHERE user_id = $1 ORDER BY created_at DESC`,
 		userID,
 	)
@@ -69,13 +70,13 @@ func (h *Handler) ListChecks(c *fiber.Ctx) error {
 
 	result := make([]fiber.Map, 0)
 	for rows.Next() {
-		var id, name, aiVerdict, aiComment, outcome, createdAt string
+		var id, name, aiVerdict, aiComment, aiSource, outcome, createdAt string
 		var price float64
 		var hasDiscount bool
 		var answers []byte
 		var timerDeadline sql.NullString
 
-		if err := rows.Scan(&id, &name, &price, &hasDiscount, &answers, &aiVerdict, &aiComment, &outcome, &timerDeadline, &createdAt); err != nil {
+		if err := rows.Scan(&id, &name, &price, &hasDiscount, &answers, &aiVerdict, &aiComment, &aiSource, &outcome, &timerDeadline, &createdAt); err != nil {
 			continue
 		}
 
@@ -85,7 +86,7 @@ func (h *Handler) ListChecks(c *fiber.Ctx) error {
 		entry := fiber.Map{
 			"id": id, "name": name, "price": price, "has_discount": hasDiscount,
 			"answers": answersMap, "ai_verdict": aiVerdict, "ai_comment": aiComment,
-			"outcome": outcome, "created_at": createdAt,
+			"ai_source": aiSource, "outcome": outcome, "created_at": createdAt,
 		}
 		if timerDeadline.Valid {
 			entry["timer_deadline"] = timerDeadline.String
