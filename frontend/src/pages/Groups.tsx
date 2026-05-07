@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Group, type Notification } from '../api/client'
 import BottomNav from '../components/BottomNav'
+import { BellIcon } from '../components/Icons'
 
 export default function Groups() {
   const [groups, setGroups] = useState<Group[]>([])
@@ -93,7 +94,7 @@ export default function Groups() {
           onClick={openNotifs}
           className="relative text-muted hover:text-dark transition-colors p-1"
         >
-          <span className="text-xl">🔔</span>
+          <BellIcon size={20} />
           {unread > 0 && (
             <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">
               {unread > 9 ? '9+' : unread}

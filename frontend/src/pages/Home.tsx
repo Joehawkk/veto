@@ -5,6 +5,7 @@ import { useChecks } from '../hooks/useChecks'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../contexts/AuthContext'
 import BottomNav from '../components/BottomNav'
+import { ClockIcon, TagIcon } from '../components/Icons'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -49,7 +50,7 @@ export default function Home() {
 
         {/* Greeting */}
         <p className="text-muted text-sm self-start">
-          {displayName ? `Привет, ${displayName} 👋` : 'Привет 👋'}
+          {displayName ? `Привет, ${displayName}` : 'Привет'}
         </p>
 
         {/* Savings stats */}
@@ -97,9 +98,9 @@ export default function Home() {
             {stats.pending > 0 && (
               <Link
                 to="/history"
-                className="w-full border border-[#FF9E30]/50 bg-[#FFDE8A]/30 text-[#F86D06] font-medium py-3 rounded-xl text-sm text-center hover:bg-[#FFDE8A]/50 transition-colors"
+                className="w-full border border-[#FF9E30]/50 bg-[#FFDE8A]/30 text-[#F86D06] font-medium py-3 rounded-xl text-sm text-center hover:bg-[#FFDE8A]/50 transition-colors flex items-center justify-center gap-2"
               >
-                ⏳ {stats.pending} {stats.pending === 1 ? 'товар ждёт' : 'товара ждут'} решения
+                <ClockIcon size={14} /> {stats.pending} {stats.pending === 1 ? 'товар ждёт' : 'товара ждут'} решения
               </Link>
             )}
           </div>
@@ -143,7 +144,7 @@ export default function Home() {
                     : 'border-border bg-white text-muted hover:text-dark'
                 }`}
               >
-                <span className="text-xl">🏷️</span>
+                <span className="text-[#F86D06]"><TagIcon size={18} /></span>
                 <div className="flex-1">
                   <p className="text-sm font-bold leading-tight">{hasDiscount ? 'Есть скидка' : 'Скидки нет'}</p>
                   <p className="text-xs text-muted leading-tight mt-0.5">

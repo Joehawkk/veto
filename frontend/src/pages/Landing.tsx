@@ -1,18 +1,22 @@
 import { Link } from 'react-router-dom'
+import { ZapIcon, FlameIcon, TargetIcon } from '../components/Icons'
 
 const features = [
   {
-    icon: '⚡',
+    icon: <ZapIcon size={28} />,
+    color: 'text-primary bg-primary/10',
     title: 'Нажми VETO',
     desc: 'Вместо импульсивной покупки — один тап. Зафикси отказ и почувствуй силу.',
   },
   {
-    icon: '🔥',
+    icon: <FlameIcon size={28} />,
+    color: 'text-[#F86D06] bg-[#FFDE8A]/40',
     title: 'Получи Respect',
     desc: 'Комьюнити видит твои отказы и дает Respect. Отказываться стало модно.',
   },
   {
-    icon: '🎯',
+    icon: <TargetIcon size={28} />,
+    color: 'text-secondary bg-secondary/10',
     title: 'Копи на цель',
     desc: 'Каждый VETO приближает к цели. Прогресс-бар не врёт — ты реально копишь.',
   },
@@ -74,9 +78,9 @@ export default function Landing() {
           <div className="w-full bg-border rounded-full h-2 mb-6">
             <div className="bg-primary h-2 rounded-full" style={{ width: '20%' }} />
           </div>
-          <button className="w-full h-20 rounded-2xl bg-primary text-white font-black text-2xl tracking-widest shadow-orange">
+          <div className="w-full h-20 rounded-2xl bg-primary text-white font-black text-2xl tracking-widest shadow-orange flex items-center justify-center select-none pointer-events-none">
             VETO
-          </button>
+          </div>
           <p className="text-center text-muted text-xs mt-3">последний раз: Кофе, −350 ₽</p>
         </div>
       </section>
@@ -86,7 +90,9 @@ export default function Landing() {
         <div className="grid md:grid-cols-3 gap-4">
           {features.map((f) => (
             <div key={f.title} className="bg-white border border-border rounded-2xl p-6 shadow-card">
-              <div className="text-3xl mb-4">{f.icon}</div>
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${f.color}`}>
+                {f.icon}
+              </div>
               <h3 className="font-bold text-dark mb-2">{f.title}</h3>
               <p className="text-muted text-sm leading-relaxed">{f.desc}</p>
             </div>

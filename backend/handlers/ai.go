@@ -81,8 +81,20 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 		"model": h.cfg.OpenRouterModel,
 		"messages": []map[string]string{
 			{
-				"role":    "system",
-				"content": "You are Veto — a strict Russian-language impulse purchase guard for students. Your default is to say NO or WAIT. Only approve if the item is clearly essential (medicine, basic groceries) or the user has thought about it for 3+ days with no red flags. Be blunt, not encouraging. You MUST respond in Russian only. Return only valid JSON without markdown.",
+				"role": "system",
+				"content": `Ты — Veto, финансовый советник для студентов. Отвечай только на русском. Только JSON без markdown и пояснений.
+
+Формат ответа: {"verdict":"go|wait|veto","tip":"2-3 предложения"}
+
+ЕДА ВНЕ ДОМА (бургер, пицца, суши, кафе, ресторан, доставка, кофе, фастфуд):
+- Вердикт "wait" (до 500 ₽) или "veto" (дороже или явно импульс)
+- Никогда "go" для еды вне дома
+- В tip ОБЯЗАТЕЛЬНО предложи конкретную альтернативу: сколько это стоит дома, что купить в магазине, как сэкономить. Примеры: "Бургер дома выйдет 150-200 ₽ — булка, котлета, овощи. Побалуй себя дешевле.", "За эти деньги купишь продукты на 3 обеда.", "Найди заведение рядом подешевле или купи готовое в магазине."
+
+ОСТАЛЬНЫЕ ПОКУПКИ:
+- По умолчанию "wait" или "veto". "go" только при 3+ днях обдумывания и без красных флагов.
+- При wait/veto — конкретный совет, не просто "не покупай"
+- Если цена подозрительно низкая для товара — упомяни риск подделки`,
 			},
 			{
 				"role":    "user",
@@ -636,30 +648,13 @@ func buildAIPrompt(input aiCheckRequest) string {
 		historySummary = strings.Join(items, "; ")
 	}
 
-	return fmt.Sprintf(`Ты помощник Veto. Отвечай строго на русском языке.
-Нужен только JSON без markdown и пояснений:
-{"verdict":"go|wait|veto","tip":"2-3 коротких предложения"}.
+	impulse := isImpulseItem(input.Name)
+	impulseHint := ""
+	if impulse {
+		impulseHint = "\nЭто ЕДА ВНЕ ДОМА / импульсная трата — обязательно предложи в tip конкретную дешёвую альтернативу (приготовить дома, купить в магазине, найти дешевле)."
+	}
 
-ПРАВИЛА — нарушать нельзя:
-
-ВСЕГДА "go" (только для):
-- Лекарства, препараты, медикаменты
-- Базовые продукты из магазина: хлеб, молоко, крупа, яйца, мясо, вода, овощи
-- Базовая гигиена: зубная паста, мыло, шампунь, прокладки
-- Базовая одежда: носки, трусы, нижнее бельё при цене до 1500 ₽
-
-ВСЕГДА scrutinize (никогда не "go" автоматически):
-- Еда вне дома: ресторан, кафе, фастфуд, бар, доставка, суши, пицца, бургер
-- Напитки: кофе, коктейли, алкоголь, энергетики
-- Развлечения: концерт, кино, клуб, вечеринка
-- Любая дорогая покупка (> 3000 ₽) без многодневного обдумывания
-- Спонтанные покупки одежды, гаджетов, аксессуаров, подписок
-
-ЦЕНА: сравни указанную цену с типичными ценами в России. Если цена явно заниженная (например AirPods за 500 ₽ — норма 15000+ ₽) — упомяни это как риск (подделка, мошенничество). Если цена высокая для студента — учти в вердикте.
-
-ОБЩИЙ ПРИНЦИП: защищай кошелёк пользователя. При сомнении — "wait" или "veto".
-
-Покупка: %s
+	return fmt.Sprintf(`Покупка: %s
 Цена: %.0f ₽
 Скидка/акция: %t
 Нужно прямо сейчас: %t
@@ -667,7 +662,7 @@ func buildAIPrompt(input aiCheckRequest) string {
 Думал о покупке: %s
 Настроение: %s
 Профиль: %s
-История: %s`,
+История: %s%s`,
 		input.Name,
 		input.Price,
 		input.HasDiscount,
@@ -677,6 +672,7 @@ func buildAIPrompt(input aiCheckRequest) string {
 		input.Answers.Mood,
 		profileSummary,
 		historySummary,
+		impulseHint,
 	)
 }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { api, type Notification } from '../api/client'
+import { BellIcon } from './Icons'
 
 export default function NotificationBell() {
   const [items, setItems] = useState<Notification[]>([])
@@ -60,7 +61,7 @@ export default function NotificationBell() {
         onClick={handleOpen}
         className="relative w-9 h-9 flex items-center justify-center rounded-xl text-muted hover:text-white hover:bg-card transition-colors"
       >
-        <span className="text-xl">🔔</span>
+        <BellIcon size={20} />
         {unread > 0 && (
           <span className="absolute -top-1 -right-1 bg-secondary text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">
             {unread > 9 ? '9+' : unread}

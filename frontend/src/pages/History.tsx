@@ -56,8 +56,8 @@ function Card({ entry, onOutcome }: { entry: CheckEntry; onOutcome: (id: string,
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex-1 min-w-0">
           <p className="text-dark font-bold truncate">{entry.name}</p>
-          <p className="text-muted text-xs mt-0.5">
-            {date}{entry.has_discount && <span className="ml-2 text-[#F86D06]">🏷️</span>}
+          <p className="text-muted text-xs mt-0.5 flex items-center gap-1.5">
+            {date}{entry.has_discount && <span className="text-[#F86D06]"><TagIcon size={11} /></span>}
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -146,7 +146,7 @@ export default function History() {
 
         {stats.pending > 0 && (
           <div className="bg-[#FFDE8A]/40 border border-[#FF9E30]/40 rounded-2xl px-4 py-3 mb-5 flex items-center gap-3">
-            <span className="text-xl">⏳</span>
+            <ClockIcon size={18} />
             <p className="text-[#F86D06] text-sm font-medium">
               {stats.pending} {stats.pending === 1 ? 'товар ждёт' : 'товара ждут'} твоего решения
             </p>

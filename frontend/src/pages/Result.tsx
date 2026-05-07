@@ -5,7 +5,7 @@ import { useAI, type AIResult } from '../hooks/useAI'
 import { useProfile } from '../hooks/useProfile'
 import { api } from '../api/client'
 import VerdictBadge from '../components/VerdictBadge'
-import { HeartIcon, CartIcon, ClockIcon, WarningIcon, TagIcon, LightbulbIcon, ListIcon } from '../components/Icons'
+import { HeartIcon, CartIcon, ClockIcon, WarningIcon, TagIcon, LightbulbIcon, ListIcon, BotIcon } from '../components/Icons'
 import type { Verdict } from '../lib/scoring'
 
 const TIMER_OPTIONS = [
@@ -15,20 +15,20 @@ const TIMER_OPTIONS = [
   { label: 'Неделю', days: 7 },
 ]
 
-const INTEREST_SUGGESTIONS: Record<string, { text: string; icon: string }> = {
-  'Игры':           { icon: '🎮', text: 'Поищи игру на распродаже в Steam — часто топ за 100–300 ₽' },
-  'Музыка':         { icon: '🎵', text: 'Месяц Яндекс Музыки или Spotify — музыка без рекламы за ~200 ₽' },
-  'Мода':           { icon: '👗', text: 'Загляни на Авито или Vinted — те же вещи в разы дешевле' },
-  'Технологии':     { icon: '💻', text: 'Инвестируй в знания: курс на Stepik или YouTube-плейлист' },
-  'Спорт':          { icon: '🏋️', text: 'Пробный день в зале или новый маршрут для пробежки' },
-  'Книги':          { icon: '📚', text: 'Bookmate или электронка в библиотеке — тысячи книг бесплатно' },
-  'Путешествия':    { icon: '✈️', text: 'Отложи эти деньги в копилку — ближе к поездке мечты!' },
-  'Еда':            { icon: '🍕', text: 'Попробуй приготовить что-то новое — вложи деньги в хорошие продукты' },
-  'Творчество':     { icon: '🎨', text: 'Canva Pro или новые краски/материалы для проекта' },
-  'Кино и сериалы': { icon: '🎬', text: 'Кинопоиск или ИВИ дают первый месяц за 1 ₽' },
+const INTEREST_SUGGESTIONS: Record<string, string> = {
+  'Игры':           'Поищи игру на распродаже в Steam — часто топ за 100–300 ₽',
+  'Музыка':         'Месяц Яндекс Музыки или Spotify — музыка без рекламы за ~200 ₽',
+  'Мода':           'Загляни на Авито или Vinted — те же вещи в разы дешевле',
+  'Технологии':     'Инвестируй в знания: курс на Stepik или YouTube-плейлист',
+  'Спорт':          'Пробный день в зале или новый маршрут для пробежки',
+  'Книги':          'Bookmate или электронка в библиотеке — тысячи книг бесплатно',
+  'Путешествия':    'Отложи эти деньги в копилку — ближе к поездке мечты!',
+  'Еда':            'Попробуй приготовить что-то новое — вложи деньги в хорошие продукты',
+  'Творчество':     'Canva Pro или новые краски/материалы для проекта',
+  'Кино и сериалы': 'Кинопоиск или ИВИ дают первый месяц за 1 ₽',
 }
 
-function pickSuggestion(interests: string[]): { icon: string; text: string } | null {
+function pickSuggestion(interests: string[]): string | null {
   for (const i of interests) if (INTEREST_SUGGESTIONS[i]) return INTEREST_SUGGESTIONS[i]
   return null
 }
@@ -219,8 +219,8 @@ export default function Result() {
           <VerdictBadge verdict={aiResult.verdict as Verdict} size="lg" ghost />
         </div>
         <div className="flex gap-3 items-start">
-          <div className="shrink-0 w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mt-0.5">
-            <span className="text-base">🤖</span>
+          <div className="shrink-0 w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mt-0.5 text-white">
+            <BotIcon size={18} />
           </div>
           <div>
             <p className="text-white/70 text-[11px] font-bold uppercase tracking-widest mb-1.5">AI вердикт</p>
@@ -238,10 +238,7 @@ export default function Result() {
               <span className="text-primary"><LightbulbIcon size={18} /></span>
               <p className="text-dark font-black text-sm">Лучше потрать на это</p>
             </div>
-            <div className="flex gap-3 items-start">
-              <span className="text-xl">{suggestion.icon}</span>
-              <p className="text-gray-dark text-sm leading-relaxed">{suggestion.text}</p>
-            </div>
+            <p className="text-gray-dark text-sm leading-relaxed">{suggestion}</p>
           </div>
         )}
 

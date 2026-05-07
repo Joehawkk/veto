@@ -3,7 +3,7 @@ import { type CheckEntry } from '../api/client'
 import { type Verdict } from '../lib/scoring'
 import { useChecks } from '../hooks/useChecks'
 import VerdictBadge from '../components/VerdictBadge'
-import { HeartIcon, CartIcon, WaitIcon, CheckMarkIcon, XIcon, ClockIcon, WarningIcon, TagIcon } from '../components/Icons'
+import { HeartIcon, CartIcon, WaitIcon, CheckMarkIcon, XIcon, ClockIcon, WarningIcon, TagIcon, BotIcon } from '../components/Icons'
 
 const OUTCOME = {
   stopped: { label: 'Отказался',       color: 'text-primary' },
@@ -12,19 +12,19 @@ const OUTCOME = {
 }
 
 const MOOD_RU: Record<string, string> = {
-  good:    '😊 Хорошее',
-  neutral: '😐 Нейтральное',
-  sad:     '😔 Грустное',
-  angry:   '😠 Злое',
-  stressed:'😰 Стрессовое',
-  tired:   '😴 Усталое',
+  good:     'Хорошее',
+  neutral:  'Нейтральное',
+  sad:      'Грустное',
+  angry:    'Злое',
+  stressed: 'Стрессовое',
+  tired:    'Усталое',
 }
 
 const DURATION_RU: Record<string, string> = {
-  '30min':   '⚡ 30 минут',
-  '1hour':   '☕ 1 час',
-  '24hours': '🌙 24 часа',
-  '3days':   '📅 3+ дня',
+  '30min':   '30 минут',
+  '1hour':   '1 час',
+  '24hours': '24 часа',
+  '3days':   '3+ дня',
 }
 
 function getTimeLeft(deadline: string): string {
@@ -136,8 +136,8 @@ export default function HistoryDetail() {
         {entry.ai_comment && (
           <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
             <div className="flex gap-3 items-start">
-              <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #FD7203, #F86D06)' }}>
-                <span className="text-sm">🤖</span>
+              <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg, #FD7203, #F86D06)' }}>
+                <BotIcon size={16} />
               </div>
               <div>
                 <p className="text-muted text-[10px] font-bold uppercase tracking-widest mb-1.5">AI вердикт</p>
