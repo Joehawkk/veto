@@ -2,11 +2,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { type Profile } from '../lib/storage'
+import { useTheme } from '../contexts/ThemeContext'
 import {
   StopIcon, BrainIcon, TargetIcon, FrownIcon,
   StressedFaceIcon, TiredFaceIcon, TagIcon, PhoneIcon, NeutralFaceIcon, UsersIcon,
   GamepadIcon, MusicNoteIcon, ShirtIcon, LaptopIcon, DumbbellIcon,
-  BookIcon, PlaneIcon, UtensilsIcon, PaletteIcon, FilmIcon,
+  BookIcon, PlaneIcon, UtensilsIcon, PaletteIcon, FilmIcon, MoonIcon,
 } from '../components/Icons'
 
 const TOTAL = 5
@@ -59,6 +60,7 @@ function Bar({ step }: { step: number }) {
 export default function Onboarding() {
   const navigate = useNavigate()
   const { completeOnboarding } = useProfile()
+  const { theme, toggleTheme } = useTheme()
   const [step, setStep] = useState(1)
   const [goals, setGoals] = useState<string[]>([])
   const [triggers, setTriggers] = useState<string[]>([])
@@ -115,6 +117,18 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 py-12">
+      {/* Theme toggle */}
+      <div className="absolute top-5 right-6">
+        <button
+          onClick={toggleTheme}
+          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+            theme === 'dark' ? 'bg-primary/20 text-primary' : 'bg-card text-muted hover:text-dark border border-border'
+          }`}
+          title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+        >
+          <MoonIcon size={18} />
+        </button>
+      </div>
       <div className="w-full max-w-sm">
         {nav}
         <Bar step={step} />

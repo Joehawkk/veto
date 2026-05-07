@@ -65,10 +65,12 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 	}
 
 	var userID, passwordHash, displayName string
+	var onboarded bool
+	var profileData []byte
 	err := h.db.QueryRow(
-		`SELECT id, password_hash, display_name FROM users WHERE username = $1`,
+		`SELECT id, password_hash, display_name, onboarded, profile_data FROM users WHERE username = $1`,
 		input.Username,
-	).Scan(&userID, &passwordHash, &displayName)
+	).Scan(&userID, &passwordHash, &displayName, &onboarded, &profileData)
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Аккаунт не найден"})
 	}
@@ -87,5 +89,7 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 		"user_id":      userID,
 		"username":     input.Username,
 		"display_name": displayName,
+		"onboarded":    onboarded,
+		"profile_data": string(profileData),
 	})
 }

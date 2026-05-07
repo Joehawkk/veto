@@ -17,7 +17,7 @@ export default function Login() {
     setLoading(true)
     try {
       const { data } = await api.auth.login({ username, password })
-      login(data.token, data.user_id, data.username, data.display_name)
+      login(data.token, data.user_id, data.username, data.display_name, data.onboarded, data.profile_data)
       navigate('/', { replace: true })
     } catch (err: unknown) {
       const code = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
