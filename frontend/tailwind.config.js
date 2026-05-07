@@ -1,22 +1,23 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        bg:           '#F8F8F8',
-        card:         '#FFFFFF',
-        'card-hover': '#F5F5F5',
-        primary:      '#FD7203',
-        'primary-light': '#FF9E30',
-        'primary-pale':  '#FFDE8A',
-        'primary-soft':  '#FFB27A',
-        secondary:    '#D4350E',
-        dark:         '#060606',
-        'gray-dark':  '#2C2C2C',
-        muted:        '#8A8A8A',
-        border:       '#D9D9D9',
-        'border-dark':'#BDBDBD',
+        bg:              'var(--color-bg)',
+        card:            'var(--color-card)',
+        'card-hover':    'var(--color-card-hover)',
+        primary:         'var(--color-primary)',
+        'primary-light': 'var(--color-primary-light)',
+        'primary-pale':  'var(--color-primary-pale)',
+        'primary-soft':  'var(--color-primary-soft)',
+        secondary:       'var(--color-secondary)',
+        dark:            'var(--color-dark)',
+        'gray-dark':     'var(--color-gray-dark)',
+        muted:           'var(--color-muted)',
+        border:          'var(--color-border)',
+        'border-dark':   'var(--color-border-dark)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

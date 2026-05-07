@@ -41,6 +41,7 @@ export interface FeedItem {
   id: number | string
   username: string
   display_name: string
+  avatar_url?: string | null
   amount: number
   description: string
   created_at: string
@@ -48,6 +49,16 @@ export interface FeedItem {
   has_respected: boolean
   like_count?: number
   has_liked?: boolean
+}
+
+export interface GroupGoal {
+  id: number
+  group_id: number
+  title: string
+  target_amount: number
+  current_amount: number
+  status: 'active' | 'completed'
+  created_at: string
 }
 
 export type Profile = UserProfile
@@ -85,7 +96,7 @@ export interface Group {
 }
 
 export interface GroupDetail extends Group {
-  members: { id: string; username: string; display_name: string; total_saved: number; rank: number; is_me: boolean; avatar_url: string | null }[]
+  members: { id: string; username: string; display_name: string; total_saved: number; rank: number; is_me: boolean; avatar_url: string | null; role: 'owner' | 'admin' | 'member' }[]
 }
 
 export interface Notification {
@@ -172,6 +183,17 @@ export const api = {
     getFeed: (id: number) => client.get<FeedItem[]>(`/groups/${id}/feed`),
     leave: (id: number) => client.delete(`/groups/${id}/leave`),
     invite: (groupId: number, username: string) => client.post(`/groups/${groupId}/invite`, { username }),
+    getGoals: (id: number) => client.get<GroupGoal[]>(`/groups/${id}/goals`),
+    createGoal: (id: number, data: { title: string; target_amount: number }) =>
+      client.post<GroupGoal>(`/groups/${id}/goals`, data),
+    contributeGoal: (id: number, goalId: number, amount: number) =>
+      client.post(`/groups/${id}/goals/${goalId}/contribute`, { amount }),
+    setMemberRole: (id: number, userId: string, role: 'admin' | 'member') =>
+      client.patch(`/groups/${id}/members/${userId}/role`, { role }),
+    kickMember: (id: number, userId: string) =>
+      client.delete(`/groups/${id}/members/${userId}`),
+    transferOwnership: (id: number, newOwnerId: string) =>
+      client.patch(`/groups/${id}/transfer`, { new_owner_id: newOwnerId }),
   },
   notifications: {
     get: () => client.get<{ items: Notification[]; unread: number }>('/notifications'),

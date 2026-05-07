@@ -91,6 +91,16 @@ func main() {
 	p.Delete("/groups/:id/leave", h.LeaveGroup)
 	p.Post("/groups/:id/invite", h.InviteToGroup)
 
+	// Group goals
+	p.Get("/groups/:id/goals", h.GetGroupGoals)
+	p.Post("/groups/:id/goals", h.CreateGroupGoal)
+	p.Post("/groups/:id/goals/:goalId/contribute", h.ContributeGroupGoal)
+
+	// Group admin
+	p.Patch("/groups/:id/members/:userId/role", h.SetMemberRole)
+	p.Delete("/groups/:id/members/:userId", h.KickMember)
+	p.Patch("/groups/:id/transfer", h.TransferOwnership)
+
 	// Check likes
 	p.Post("/checks/:id/like", h.LikeCheck)
 	p.Delete("/checks/:id/like", h.UnlikeCheck)

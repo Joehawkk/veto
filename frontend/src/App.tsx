@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { useEffect } from 'react'
 import { isOnboarded } from './lib/storage'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 
 import Landing from './pages/Landing'
 import Login from './pages/Login'
@@ -19,6 +20,7 @@ import GroupDetail from './pages/GroupDetail'
 import ProfilePage from './pages/Profile'
 import EditProfile from './pages/EditProfile'
 import Accounts from './pages/Accounts'
+import Settings from './pages/Settings'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -42,6 +44,7 @@ function HomeGuard() {
 
 export default function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -68,10 +71,12 @@ export default function App() {
           <Route path="/profile" element={<AuthGuard><ProfilePage /></AuthGuard>} />
           <Route path="/profile/edit" element={<AuthGuard><EditProfile /></AuthGuard>} />
           <Route path="/accounts" element={<AuthGuard><Accounts /></AuthGuard>} />
+          <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </ThemeProvider>
   )
 }
