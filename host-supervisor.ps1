@@ -101,42 +101,34 @@ function Start-Frontend {
 }
 
 function Update-TunnelUrl {
-  $blockedHosts = @(
-    'localhost.run',
-    'twitter.com',
-    'admin.localhost.run'
-  )
-
   foreach ($logName in @('tunnel.out.log', 'tunnel.err.log')) {
     $logPath = Join-Path $RunDir $logName
     if (-not (Test-Path $logPath)) { continue }
-    $content = Get-Content $logPath -Raw
+    $content = Get-Content $logPath -Raw -ErrorAction SilentlyContinue
     if ([string]::IsNullOrWhiteSpace($content)) { continue }
-    $matches = [regex]::Matches($content, 'https://[a-zA-Z0-9.-]+')
-    for ($i = $matches.Count - 1; $i -ge 0; $i--) {
-      $url = $matches[$i].Value
-      $hostName = ([Uri]$url).Host
-      if ($blockedHosts -notcontains $hostName) {
-        Set-Content -Path $PublicUrlFile -Value $url -NoNewline
-        return
-      }
+    # cloudflared prints: https://xxx.trycloudflare.com
+    $m = [regex]::Match($content, 'https://[a-z0-9-]+\.trycloudflare\.com')
+    if ($m.Success) {
+      Set-Content -Path $PublicUrlFile -Value $m.Value -NoNewline
+      return
     }
   }
 }
 
 function Start-Tunnel {
+  $cfExe = Join-Path $HostDir 'cloudflared.exe'
   $stdout = Join-Path $RunDir 'tunnel.out.log'
   $stderr = Join-Path $RunDir 'tunnel.err.log'
   $process = Start-Process `
-    -FilePath 'ssh.exe' `
-    -ArgumentList @('-o', 'StrictHostKeyChecking=no', '-o', 'ServerAliveInterval=30', '-R', '80:localhost:5173', 'nokey@localhost.run') `
+    -FilePath $cfExe `
+    -ArgumentList @('tunnel', '--url', 'http://localhost:5173', '--no-autoupdate') `
     -WorkingDirectory $RepoRoot `
     -RedirectStandardOutput $stdout `
     -RedirectStandardError $stderr `
     -WindowStyle Hidden `
     -PassThru
   Write-Pid 'tunnel' $process.Id
-  Write-Log "tunnel started pid=$($process.Id)"
+  Write-Log "cloudflared tunnel started pid=$($process.Id)"
 }
 
 function Stop-Managed([string]$Name) {

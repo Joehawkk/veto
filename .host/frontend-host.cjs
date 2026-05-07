@@ -78,7 +78,7 @@ const server = http.createServer((request, response) => {
     return;
   }
 
-  if (url.pathname.startsWith('/api')) {
+  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/uploads')) {
     proxyApi(request, response);
     return;
   }

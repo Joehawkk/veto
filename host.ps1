@@ -71,9 +71,7 @@ function Stop-ByPath([string]$Path) {
 
 function Stop-TunnelProcesses {
   Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-    Where-Object {
-      $_.Name -eq 'ssh.exe' -and $_.CommandLine -like '*localhost.run*'
-    } |
+    Where-Object { $_.Name -eq 'cloudflared.exe' } |
     ForEach-Object {
       try { Stop-Process -Id $_.ProcessId -Force } catch {}
     }
@@ -96,6 +94,19 @@ function Stop-AllChildren {
 }
 
 function Invoke-Prepare {
+  # Ensure cloudflared.exe
+  $cfExe = Join-Path $HostDir 'cloudflared.exe'
+  if (-not (Test-Path $cfExe)) {
+    Write-Output 'Скачиваем cloudflared...'
+    $cfUrl = 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe'
+    try {
+      Invoke-WebRequest -Uri $cfUrl -OutFile $cfExe -UseBasicParsing
+      Write-Output 'cloudflared загружен.'
+    } catch {
+      throw "Не удалось скачать cloudflared: $($_.Exception.Message)"
+    }
+  }
+
   Write-Output 'Building backend binary...'
   Push-Location $BackendDir
   try {
