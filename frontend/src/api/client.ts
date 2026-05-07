@@ -38,7 +38,7 @@ export interface VetoItem {
 }
 
 export interface FeedItem {
-  id: number
+  id: number | string
   username: string
   display_name: string
   amount: number
@@ -46,6 +46,8 @@ export interface FeedItem {
   created_at: string
   respect_count: number
   has_respected: boolean
+  like_count?: number
+  has_liked?: boolean
 }
 
 export type Profile = UserProfile
@@ -92,6 +94,7 @@ export interface Notification {
   message: string
   read: boolean
   created_at: string
+  reference_id?: number
 }
 
 export interface CheckEntry {
@@ -121,8 +124,15 @@ export const api = {
   },
   me: {
     get: () => client.get<UserProfile>('/me'),
-    update: (data: { display_name?: string; email?: string | null; phone?: string | null; avatar_url?: string | null }) =>
-      client.patch<UserProfile>('/profile', data),
+    update: (data: {
+      display_name?: string
+      username?: string
+      email?: string | null
+      phone?: string | null
+      avatar_url?: string | null
+      current_password?: string
+      new_password?: string
+    }) => client.patch<UserProfile>('/profile', data),
   },
   profile: {
     get: () => client.get<UserProfile>('/profile'),
@@ -153,10 +163,19 @@ export const api = {
     get: (id: number) => client.get<GroupDetail>(`/groups/${id}`),
     getFeed: (id: number) => client.get<FeedItem[]>(`/groups/${id}/feed`),
     leave: (id: number) => client.delete(`/groups/${id}/leave`),
+    invite: (groupId: number, username: string) => client.post(`/groups/${groupId}/invite`, { username }),
   },
   notifications: {
     get: () => client.get<{ items: Notification[]; unread: number }>('/notifications'),
     markRead: () => client.post('/notifications/read'),
+  },
+  invites: {
+    accept: (id: number) => client.post<{ success: boolean; group_id: number; group_name: string }>(`/invites/${id}/accept`),
+    decline: (id: number) => client.post(`/invites/${id}/decline`),
+  },
+  checkLikes: {
+    like: (checkId: string) => client.post(`/checks/${checkId}/like`),
+    unlike: (checkId: string) => client.delete(`/checks/${checkId}/like`),
   },
   users: {
     list: () => client.get<AccountUser[]>('/users'),

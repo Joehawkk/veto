@@ -73,6 +73,22 @@ func Migrate(db *sql.DB) error {
 			timer_deadline TIMESTAMPTZ,
 			created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 		)`,
+		`CREATE TABLE IF NOT EXISTS check_likes (
+			id      BIGSERIAL PRIMARY KEY,
+			check_id UUID NOT NULL REFERENCES checks(id) ON DELETE CASCADE,
+			user_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			UNIQUE(check_id, user_id)
+		)`,
+		`CREATE TABLE IF NOT EXISTS group_invites (
+			id              BIGSERIAL PRIMARY KEY,
+			group_id        BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+			invited_by      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			invited_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			status          TEXT NOT NULL DEFAULT 'pending',
+			created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			UNIQUE(group_id, invited_user_id)
+		)`,
+		`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_id BIGINT`,
 	}
 	for _, s := range stmts {
 		if _, err := db.Exec(s); err != nil {

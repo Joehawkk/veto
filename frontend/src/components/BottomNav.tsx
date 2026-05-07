@@ -24,6 +24,19 @@ const tabs = [
     ),
   },
   {
+    to: '/groups',
+    exact: false,
+    label: 'Группы',
+    icon: (active: boolean) => (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="7" r="3" />
+        <circle cx="17" cy="9" r="2.5" />
+        <path d="M1 20c0-3.3 3.1-6 8-6s8 2.7 8 6" />
+        <path d="M17 15c2.2.4 4 2 4 4" />
+      </svg>
+    ),
+  },
+  {
     to: '/profile',
     exact: false,
     label: 'Профиль',

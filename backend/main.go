@@ -84,10 +84,17 @@ func main() {
 	p.Get("/groups/:id", h.GetGroupDetail)
 	p.Get("/groups/:id/feed", h.GetGroupFeed)
 	p.Delete("/groups/:id/leave", h.LeaveGroup)
+	p.Post("/groups/:id/invite", h.InviteToGroup)
+
+	// Check likes
+	p.Post("/checks/:id/like", h.LikeCheck)
+	p.Delete("/checks/:id/like", h.UnlikeCheck)
 
 	// Notifications
 	p.Get("/notifications", h.GetNotifications)
 	p.Post("/notifications/read", h.MarkNotificationsRead)
+	p.Post("/invites/:id/accept", h.AcceptGroupInvite)
+	p.Post("/invites/:id/decline", h.DeclineGroupInvite)
 
 	// Checks (purchase history)
 	p.Post("/checks", h.CreateCheck)

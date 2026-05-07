@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -79,10 +80,13 @@ func (h *Handler) UpdateProfile(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var input struct {
-		DisplayName string  `json:"display_name"`
-		Email       *string `json:"email"`
-		Phone       *string `json:"phone"`
-		AvatarURL   *string `json:"avatar_url"`
+		DisplayName     string  `json:"display_name"`
+		Username        *string `json:"username"`
+		Email           *string `json:"email"`
+		Phone           *string `json:"phone"`
+		AvatarURL       *string `json:"avatar_url"`
+		CurrentPassword *string `json:"current_password"`
+		NewPassword     *string `json:"new_password"`
 	}
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid input"})
@@ -142,6 +146,31 @@ func (h *Handler) UpdateProfile(c *fiber.Ctx) error {
 		}
 	}
 
+	if input.Username != nil && *input.Username != "" {
+		uname := strings.TrimSpace(*input.Username)
+		setClauses = append(setClauses, "username = $"+itoa(argIdx))
+		args = append(args, uname)
+		argIdx++
+	}
+
+	if input.NewPassword != nil && *input.NewPassword != "" {
+		if input.CurrentPassword == nil || *input.CurrentPassword == "" {
+			return c.Status(400).JSON(fiber.Map{"error": "current_password required to change password"})
+		}
+		var hash string
+		h.db.QueryRow(`SELECT password_hash FROM users WHERE id = $1`, userID).Scan(&hash)
+		if bcrypt.CompareHashAndPassword([]byte(hash), []byte(*input.CurrentPassword)) != nil {
+			return c.Status(401).JSON(fiber.Map{"error": "current password is incorrect"})
+		}
+		if len(*input.NewPassword) < 6 {
+			return c.Status(400).JSON(fiber.Map{"error": "new password must be at least 6 characters"})
+		}
+		newHash, _ := bcrypt.GenerateFromPassword([]byte(*input.NewPassword), bcrypt.DefaultCost)
+		setClauses = append(setClauses, "password_hash = $"+itoa(argIdx))
+		args = append(args, string(newHash))
+		argIdx++
+	}
+
 	if len(setClauses) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "no fields to update"})
 	}
@@ -151,7 +180,10 @@ func (h *Handler) UpdateProfile(c *fiber.Ctx) error {
 
 	_, err := h.db.Exec(query, args...)
 	if err != nil {
-		// Unique constraint on email
+		errStr := err.Error()
+		if strings.Contains(errStr, "username") {
+			return c.Status(409).JSON(fiber.Map{"error": "username already taken"})
+		}
 		return c.Status(409).JSON(fiber.Map{"error": "email already in use"})
 	}
 

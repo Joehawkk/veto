@@ -17,6 +17,7 @@ import Feed from './pages/Feed'
 import Groups from './pages/Groups'
 import GroupDetail from './pages/GroupDetail'
 import ProfilePage from './pages/Profile'
+import EditProfile from './pages/EditProfile'
 import Accounts from './pages/Accounts'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="/groups" element={<AuthGuard><Groups /></AuthGuard>} />
           <Route path="/groups/:id" element={<AuthGuard><GroupDetail /></AuthGuard>} />
           <Route path="/profile" element={<AuthGuard><ProfilePage /></AuthGuard>} />
+          <Route path="/profile/edit" element={<AuthGuard><EditProfile /></AuthGuard>} />
           <Route path="/accounts" element={<AuthGuard><Accounts /></AuthGuard>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
