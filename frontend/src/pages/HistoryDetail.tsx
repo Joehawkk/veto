@@ -102,7 +102,7 @@ export default function HistoryDetail() {
         </div>
 
         <div className="bg-card border border-border rounded-2xl px-5 py-4 flex items-center gap-3 shadow-card">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${entry.outcome === 'stopped' ? 'bg-primary/10 text-primary' : entry.outcome === 'bought' ? 'bg-gray-100 text-gray-500' : 'bg-[#FFDE8A]/40 text-[#F86D06]'}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${entry.outcome === 'stopped' ? 'bg-primary/10 text-primary' : entry.outcome === 'bought' ? 'bg-border text-muted' : 'bg-[#FFDE8A]/40 text-[#F86D06]'}`}>
             {entry.outcome === 'stopped' && <HeartIcon size={18} filled />}
             {entry.outcome === 'bought' && <CartIcon size={18} />}
             {entry.outcome === 'pending' && <WaitIcon size={18} />}
@@ -146,7 +146,7 @@ export default function HistoryDetail() {
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       entry.ai_source === 'openrouter'
                         ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-600'
+                        : 'bg-border text-muted'
                     }`}>
                       {entry.ai_source === 'openrouter' ? 'OpenRouter' : 'Локальный'}
                     </span>

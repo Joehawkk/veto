@@ -4,8 +4,9 @@ import { setCurrent } from '../lib/storage'
 import { useChecks } from '../hooks/useChecks'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
 import BottomNav from '../components/BottomNav'
-import { ClockIcon, TagIcon } from '../components/Icons'
+import { ClockIcon, TagIcon, MoonIcon } from '../components/Icons'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -24,6 +25,7 @@ export default function Home() {
     navigate('/check')
   }
 
+  const { theme, toggleTheme } = useTheme()
   const totalSaved = stats.saved
   const vetoCount = stats.stopped
   const hasSaved = totalSaved > 0 || vetoCount > 0
@@ -37,13 +39,24 @@ export default function Home() {
           <span className="text-primary font-black text-2xl tracking-widest">VETO</span>
           <p className="text-muted text-xs mt-0.5">осознанные покупки</p>
         </div>
-        <button
-          onClick={logout}
-          className="text-sm text-muted hover:text-secondary transition-colors"
-          title="Выйти"
-        >
-          Выйти
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleTheme}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+              theme === 'dark' ? 'bg-primary/20 text-primary' : 'bg-bg text-muted hover:text-dark'
+            }`}
+            title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+          >
+            <MoonIcon size={18} />
+          </button>
+          <button
+            onClick={logout}
+            className="text-sm text-muted hover:text-secondary transition-colors"
+            title="Выйти"
+          >
+            Выйти
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-6 pb-24 max-w-md mx-auto w-full gap-4">
@@ -164,7 +177,7 @@ export default function Home() {
                     {hasDiscount ? 'AI учтёт скидку в вердикте' : 'Нажми, если товар по акции'}
                   </p>
                 </div>
-                <div className={`w-10 h-6 rounded-full transition-all flex items-center px-1 ${hasDiscount ? 'bg-primary' : 'bg-gray-300'}`}>
+                <div className={`w-10 h-6 rounded-full transition-all flex items-center px-1 ${hasDiscount ? 'bg-primary' : 'bg-border'}`}>
                   <div className={`w-4 h-4 rounded-full bg-card transition-all shadow-sm ${hasDiscount ? 'translate-x-4' : 'translate-x-0'}`} />
                 </div>
               </button>

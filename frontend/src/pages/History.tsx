@@ -8,7 +8,7 @@ import { HeartIcon, CartIcon, ClockIcon, WarningIcon, TagIcon } from '../compone
 
 const OUTCOME = {
   stopped: { label: 'Отказался', color: 'text-primary' },
-  bought:  { label: 'Купил',     color: 'text-gray-500' },
+  bought:  { label: 'Купил',     color: 'text-muted' },
   pending: { label: 'Ожидает',   color: 'text-[#F86D06]' },
 }
 
