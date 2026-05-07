@@ -12,6 +12,22 @@ $SupervisorLog = Join-Path $RunDir 'supervisor.log'
 New-Item -ItemType Directory -Force -Path $RunDir | Out-Null
 New-Item -ItemType Directory -Force -Path $HostDir | Out-Null
 
+function Import-DotEnv([string]$EnvFile) {
+  if (-not (Test-Path $EnvFile)) { return }
+  Get-Content $EnvFile | ForEach-Object {
+    $line = $_.Trim()
+    if ($line -eq '' -or $line.StartsWith('#')) { return }
+    $idx = $line.IndexOf('=')
+    if ($idx -lt 1) { return }
+    $key = $line.Substring(0, $idx).Trim()
+    $val = $line.Substring($idx + 1).Trim()
+    [System.Environment]::SetEnvironmentVariable($key, $val, 'Process')
+  }
+}
+
+# Load backend env vars so the child process inherits them
+Import-DotEnv (Join-Path $BackendDir '.env')
+
 function Write-Log([string]$Message) {
   $line = "$(Get-Date -Format s) $Message"
   Add-Content -Path $SupervisorLog -Value $line
@@ -121,7 +137,7 @@ function Start-Tunnel {
   $stderr = Join-Path $RunDir 'tunnel.err.log'
   $process = Start-Process `
     -FilePath $cfExe `
-    -ArgumentList @('tunnel', '--url', 'http://localhost:5173', '--no-autoupdate') `
+    -ArgumentList @('tunnel', '--url', 'http://localhost:5173', '--no-autoupdate', '--protocol', 'http2') `
     -WorkingDirectory $RepoRoot `
     -RedirectStandardOutput $stdout `
     -RedirectStandardError $stderr `

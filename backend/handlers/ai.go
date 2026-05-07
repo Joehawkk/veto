@@ -228,14 +228,18 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest, recentSugg
 	req.Header.Set("HTTP-Referer", baseURL)
 	req.Header.Set("X-Title", "Veto")
 
-	client := &http.Client{Timeout: 12 * time.Second}
+	client := &http.Client{Timeout: 35 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		fmt.Printf("[OR] request failed: %v\n", err)
 		return aiCheckResponse{}, false
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var errBuf [512]byte
+		n, _ := resp.Body.Read(errBuf[:])
+		fmt.Printf("[OR] HTTP %d: %s\n", resp.StatusCode, string(errBuf[:n]))
 		return aiCheckResponse{}, false
 	}
 
@@ -247,11 +251,13 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest, recentSugg
 		} `json:"choices"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil || len(data.Choices) == 0 {
+		fmt.Printf("[OR] decode err=%v choices=%d\n", err, len(data.Choices))
 		return aiCheckResponse{}, false
 	}
 
 	parsed, ok := parseAIContent(data.Choices[0].Message.Content, input.LocalVerdict)
 	if !ok {
+		fmt.Printf("[OR] parse failed: %s\n", data.Choices[0].Message.Content[:min(100, len(data.Choices[0].Message.Content))])
 		return aiCheckResponse{}, false
 	}
 
