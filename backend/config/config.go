@@ -31,7 +31,7 @@ func Load() *Config {
 		JWTSecret:        getEnv("JWT_SECRET", "dev-secret-key-change-in-production"),
 		Port:             getEnv("PORT", "8080"),
 		AnthropicAPIKey:  getEnv("ANTHROPIC_API_KEY", ""),
-		AnthropicModel:   getEnv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
+		AnthropicModel:   getEnv("ANTHROPIC_MODEL", "haiku-4-5-20251001"),
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
 		OpenRouterModel:  getEnv("OPENROUTER_MODEL", "openai/gpt-oss-20b:free"),
 	}

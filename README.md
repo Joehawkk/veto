@@ -17,7 +17,7 @@
 
 ## Функции
 
-- **ИИ-вердикт** — Claude Haiku 4.5 через OpenRouter с серверными override-правилами
+- **ИИ-вердикт** — Haiku 4.5 через OpenRouter с серверными override-правилами
 - **Умные категории** — лекарства и базовые продукты всегда "купи"; кофе/фастфуд никогда "купи"
 - **Аналоги для еды** — при импульсной еде ИИ предлагает приготовить дома или купить дешевле
 - **Ценовой анализ** — ИИ замечает подозрительно низкие цены (риск подделки)
@@ -42,7 +42,7 @@
 - JWT-авторизация
 
 ### AI
-- [OpenRouter](https://openrouter.ai) → Claude Haiku 4.5 (`anthropic/claude-haiku-4-5`)
+- [OpenRouter](https://openrouter.ai) → Haiku 4.5 (`anthropic/haiku-4-5`)
 - Серверные override-правила (не доверяем модели для критичных категорий)
 - Fallback: локальный скоринг без API
 
@@ -69,7 +69,7 @@ DATABASE_URL=postgres://veto:veto@localhost:5432/veto?sslmode=disable
 JWT_SECRET=your-secret-32-chars
 PORT=8080
 OPENROUTER_API_KEY=sk-or-v1-...
-OPENROUTER_MODEL=anthropic/claude-haiku-4-5
+OPENROUTER_MODEL=anthropic/haiku-4-5
 ```
 
 ### Frontend
@@ -104,7 +104,7 @@ stop.bat    # останавливает
 - Плохое настроение: −2
 - Ночное время (21:00–06:00): −1
 
-**2. Claude Haiku 4.5** — выводит вердикт советом, НО:
+**2. Haiku 4.5** — выводит вердикт советом, НО:
 - Для лекарств/базовых продуктов/гигиены → всегда "go" (серверный override)
 - Для импульсных товаров → никогда "go"; дороже 400 ₽ → "veto"
 - ИИ не может быть строже, чем локальный скоринг (cap)
