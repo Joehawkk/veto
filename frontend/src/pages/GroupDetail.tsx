@@ -190,8 +190,13 @@ export default function GroupDetail() {
             )}
             {feed.map((item) => (
               <div key={item.id} className="bg-white border border-border rounded-2xl p-4 shadow-card">
-                <div className="flex items-start justify-between mb-2">
-                  <p className="text-primary font-bold text-sm">@{item.username}</p>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-xs overflow-hidden shrink-0">
+                      {item.username[0]?.toUpperCase()}
+                    </div>
+                    <p className="text-dark font-bold text-sm">@{item.username}</p>
+                  </div>
                   <p className="text-muted text-xs">{timeAgo(item.created_at)}</p>
                 </div>
                 <p className="text-dark text-sm mb-1">
@@ -200,9 +205,17 @@ export default function GroupDetail() {
                 <p className="text-primary font-black text-lg mb-3">+{item.amount.toLocaleString('ru')} ₽</p>
                 <button
                   onClick={() => handleLike(item.id)}
-                  className={`flex items-center gap-1.5 text-sm transition-colors ${item.has_liked ? 'text-secondary' : 'text-muted hover:text-secondary'}`}
+                  className={`flex items-center gap-1.5 text-sm transition-all ${item.has_liked ? 'text-secondary' : 'text-muted hover:text-secondary'}`}
                 >
-                  <span>{item.has_liked ? '❤️' : '🤍'}</span>
+                  <svg
+                    width="18" height="18" viewBox="0 0 24 24"
+                    fill={item.has_liked ? 'currentColor' : 'none'}
+                    stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round"
+                    className="transition-all"
+                  >
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                  </svg>
                   <span>{item.like_count ?? 0}</span>
                 </button>
               </div>
@@ -218,15 +231,24 @@ export default function GroupDetail() {
                 key={m.id}
                 className={`bg-white border rounded-2xl p-4 shadow-card flex items-center gap-4 ${m.is_me ? 'border-primary/40' : 'border-border'}`}
               >
-                <span className="text-2xl w-8 text-center">
-                  {i < 3 ? medalEmoji[i] : <span className="text-muted text-sm font-bold">{m.rank}</span>}
-                </span>
+                <div className="relative shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 overflow-hidden flex items-center justify-center text-primary font-black text-sm">
+                    {m.avatar_url ? (
+                      <img src={m.avatar_url} alt={m.username} className="w-full h-full object-cover" />
+                    ) : (
+                      (m.display_name || m.username)[0]?.toUpperCase()
+                    )}
+                  </div>
+                  {i < 3 && (
+                    <span className="absolute -bottom-1 -right-1 text-sm leading-none">{medalEmoji[i]}</span>
+                  )}
+                </div>
                 <div className="flex-1">
                   <p className="font-bold text-dark">
-                    @{m.username}
-                    {m.is_me && <span className="ml-2 text-xs text-primary">(ты)</span>}
+                    {m.display_name}
+                    {m.is_me && <span className="ml-1.5 text-xs text-primary">(ты)</span>}
                   </p>
-                  <p className="text-muted text-xs">{m.display_name}</p>
+                  <p className="text-muted text-xs">@{m.username}</p>
                 </div>
                 <p className="text-primary font-black">{m.total_saved.toLocaleString('ru')} ₽</p>
               </div>

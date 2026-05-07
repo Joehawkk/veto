@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/rand"
+	"database/sql"
 	"math/big"
 
 	"github.com/gofiber/fiber/v2"
@@ -212,7 +213,7 @@ func (h *Handler) GetGroupDetail(c *fiber.Ctx) error {
 	}
 
 	rows, err := h.db.Query(`
-		SELECT u.id, u.username, u.display_name, u.total_saved
+		SELECT u.id, u.username, u.display_name, u.total_saved, u.avatar_url
 		FROM group_members gm
 		JOIN users u ON u.id = gm.user_id
 		WHERE gm.group_id = $1
@@ -228,13 +229,14 @@ func (h *Handler) GetGroupDetail(c *fiber.Ctx) error {
 	for rows.Next() {
 		var uid, username, displayName string
 		var totalSaved float64
-		if err := rows.Scan(&uid, &username, &displayName, &totalSaved); err != nil {
+		var avatarURL sql.NullString
+		if err := rows.Scan(&uid, &username, &displayName, &totalSaved, &avatarURL); err != nil {
 			continue
 		}
 		members = append(members, fiber.Map{
 			"id": uid, "username": username, "display_name": displayName,
 			"total_saved": totalSaved, "rank": rank,
-			"is_me": uid == userID,
+			"is_me": uid == userID, "avatar_url": nullStr(avatarURL),
 		})
 		rank++
 	}
