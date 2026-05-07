@@ -498,7 +498,7 @@ func buildAIPrompt(input aiCheckRequest) string {
 	hobbyInstruction := ""
 	if input.Profile != nil && len(input.Profile.Interests) > 0 {
 		hobbyInstruction = fmt.Sprintf(
-			`"hobby_tip": "1 предложение: что конкретно купить по интересам [%s] примерно за %.0f ₽ вместо этой покупки. Только для wait/veto — для go верни пустую строку."`,
+			`"hobby_tip": "Только для wait/veto: назови 1 конкретную альтернативу по интересам [%s] за схожую сумму ~%.0f ₽. Формат: конкретный товар/сервис + цена + где купить. Пример: 'Курс по иллюстрации на Stepik — 990 ₽'. Если покупка сама по себе связана с интересами пользователя — верни пустую строку. Для go всегда верни пустую строку."`,
 			strings.Join(input.Profile.Interests, ", "),
 			input.Price,
 		)
