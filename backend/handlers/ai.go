@@ -81,11 +81,13 @@ tip (2-3 предложения):
 - Тон: умный бро, конкретно. Никаких: "взвесь", "подумай", "не торопись", "поблагодаришь себя"
 
 suggestion (1 предложение — альтернатива через интересы пользователя):
-- Для wait/veto: как эту же сумму потратить на интерес из профиля — КОНКРЕТНО с ценой
-- Пример: "400₽ = 2 месяца Яндекс Музыки без рекламы — раз уж ты любишь музыку"
-- Пример: "400₽ — это инди-игра в Steam для геймера"
+- Для wait/veto: как эту же сумму потратить на интерес из профиля — КОНКРЕТНО с ценой и названием
+- Пример: "350₽ = 2 месяца VK Музыки без рекламы — раз уж ты любишь музыку"
+- Пример: "350₽ — Half-Life: Alyx в Steam, если давно хотел"
+- Пример: "1200₽ — Kindle-книга + месяц Bookmate или 4 книги на Озоне в акцию"
 - Для go: suggestion = "" (пустая строка)
 - Если нет интересов: suggestion = "" (пустая строка)
+- КРИТИЧНО: если в промпте есть раздел "Уже использованные советы" — придумай совет про ДРУГОЙ сервис/активность/продукт, не повторяй ни одного из списка
 
 ПЛОХИЕ ПРИМЕРЫ (никогда так):
 - "Откажись и поблагодаришь себя позже" ← клише
@@ -111,21 +113,41 @@ func (h *Handler) CheckAI(c *fiber.Ctx) error {
 		input.LocalVerdict = "wait"
 	}
 
+	// Load user's recent suggestions for deduplication
+	var recentSuggestions []string
+	if userID, ok := c.Locals("user_id").(string); ok && userID != "" {
+		rows, err := h.db.Query(
+			`SELECT ai_suggestion FROM checks
+			 WHERE user_id = $1 AND ai_suggestion != ''
+			 ORDER BY created_at DESC LIMIT 20`,
+			userID,
+		)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var s string
+				if rows.Scan(&s) == nil && s != "" {
+					recentSuggestions = append(recentSuggestions, s)
+				}
+			}
+		}
+	}
+
 	// Try Anthropic first (direct API)
-	if resp, ok := h.tryAnthropic(input); ok {
+	if resp, ok := h.tryAnthropic(input, recentSuggestions); ok {
 		return c.JSON(resp)
 	}
 
 	// Try OpenRouter as fallback
-	if resp, ok := h.tryOpenRouter(c.BaseURL(), input); ok {
+	if resp, ok := h.tryOpenRouter(c.BaseURL(), input, recentSuggestions); ok {
 		return c.JSON(resp)
 	}
 
 	// Smart deterministic fallback
-	return c.JSON(buildFallbackAIResponse(input))
+	return c.JSON(buildFallbackAIResponse(input, recentSuggestions))
 }
 
-func (h *Handler) tryAnthropic(input aiCheckRequest) (aiCheckResponse, bool) {
+func (h *Handler) tryAnthropic(input aiCheckRequest, recentSuggestions []string) (aiCheckResponse, bool) {
 	if strings.TrimSpace(h.cfg.AnthropicAPIKey) == "" {
 		return aiCheckResponse{}, false
 	}
@@ -135,7 +157,7 @@ func (h *Handler) tryAnthropic(input aiCheckRequest) (aiCheckResponse, bool) {
 		"max_tokens": 500,
 		"system":     aiSystemPrompt,
 		"messages": []map[string]string{
-			{"role": "user", "content": buildAIPrompt(input)},
+			{"role": "user", "content": buildAIPrompt(input, recentSuggestions)},
 		},
 	}
 
@@ -180,7 +202,7 @@ func (h *Handler) tryAnthropic(input aiCheckRequest) (aiCheckResponse, bool) {
 	return parsed, true
 }
 
-func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckResponse, bool) {
+func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest, recentSuggestions []string) (aiCheckResponse, bool) {
 	if strings.TrimSpace(h.cfg.OpenRouterAPIKey) == "" {
 		return aiCheckResponse{}, false
 	}
@@ -189,7 +211,7 @@ func (h *Handler) tryOpenRouter(baseURL string, input aiCheckRequest) (aiCheckRe
 		"model": h.cfg.OpenRouterModel,
 		"messages": []map[string]string{
 			{"role": "system", "content": aiSystemPrompt},
-			{"role": "user", "content": buildAIPrompt(input)},
+			{"role": "user", "content": buildAIPrompt(input, recentSuggestions)},
 		},
 		"max_tokens":  500,
 		"temperature": 0.7,
@@ -263,7 +285,7 @@ func applyHardRules(parsed aiCheckResponse, input aiCheckRequest) aiCheckRespons
 
 // ─── Smart deterministic fallback ────────────────────────────────────────────
 
-func buildFallbackAIResponse(input aiCheckRequest) aiCheckResponse {
+func buildFallbackAIResponse(input aiCheckRequest, recentSuggestions []string) aiCheckResponse {
 	cat := detectCategory(input.Name)
 
 	// Essential categories
@@ -303,7 +325,7 @@ func buildFallbackAIResponse(input aiCheckRequest) aiCheckResponse {
 
 	verdict := deriveAIVerdict(input)
 	tip := buildSmartTip(verdict, input)
-	suggestion := buildSmartSuggestion(verdict, input)
+	suggestion := buildSmartSuggestion(verdict, input, recentSuggestions)
 
 	return aiCheckResponse{
 		Verdict:    verdict,
@@ -469,7 +491,340 @@ func buildActionLine(verdict string, input aiCheckRequest) string {
 	}
 }
 
-func buildSmartSuggestion(verdict string, input aiCheckRequest) string {
+// suggestionPool returns an ordered list of candidate suggestions for the given interest+price.
+// Each candidate is a ready-to-use string (already formatted with the price).
+// Candidates are ordered from most specific/valuable to least — pick the first one
+// that is not present in the user's recent suggestions.
+func suggestionPool(interest string, price float64) []string {
+	p := price
+	switch interest {
+	case "Игры":
+		switch {
+		case p <= 300:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — инди-игра в Steam по акции, типа Hades или Hollow Knight.", p),
+				fmt.Sprintf("%.0f ₽ = месяц Xbox Game Pass (209–289 ₽/мес) — десятки игр сразу.", p),
+				fmt.Sprintf("%.0f ₽ на мобильную игру или DLC к любимой игре.", p),
+				fmt.Sprintf("%.0f ₽ в Steam-кошелёк — дождись следующей распродажи и возьми больше.", p),
+				fmt.Sprintf("%.0f ₽ — саундтрек любимой игры на Bandcamp, поддержи разработчика.", p),
+			}
+		case p <= 1000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — AAA-игра на распродаже в Steam: Cyberpunk 2077, RDR2, Elden Ring.", p),
+				fmt.Sprintf("%.0f ₽ = 3 месяца Xbox Game Pass Ultimate с EA Play.", p),
+				fmt.Sprintf("%.0f ₽ — инди-бандл из 4–5 игр на Humble Bundle.", p),
+				fmt.Sprintf("%.0f ₽ на топовый мод или расширение к любимой игре.", p),
+				fmt.Sprintf("%.0f ₽ — коврик для мыши XXL или игровые наушники б/у на Авито.", p),
+			}
+		case p <= 5000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — геймпад DualSense или Xbox Controller (новый опыт).", p),
+				fmt.Sprintf("%.0f ₽ — несколько новых игр + год подписки Game Pass.", p),
+				fmt.Sprintf("%.0f ₽ — игровая гарнитура HyperX или SteelSeries среднего класса.", p),
+				fmt.Sprintf("%.0f ₽ на апгрейд ПК: дополнительная RAM или SSD для быстрой загрузки.", p),
+				fmt.Sprintf("%.0f ₽ — коллекционное издание любимой серии игр.", p),
+			}
+		default:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — серьёзный апгрейд: видеокарта б/у на Авито или новая периферия.", p),
+				fmt.Sprintf("%.0f ₽ — Nintendo Switch Lite или Steam Deck б/у — другой формат игр.", p),
+				fmt.Sprintf("%.0f ₽ на полную игровую станцию: стол, кресло, монитор.", p),
+			}
+		}
+
+	case "Музыка":
+		switch {
+		case p <= 300:
+			return []string{
+				fmt.Sprintf("%.0f ₽ = месяц Яндекс Музыки без рекламы (169 ₽/мес).", p),
+				fmt.Sprintf("%.0f ₽ = 1.5 месяца VK Музыки (99 ₽/мес).", p),
+				fmt.Sprintf("%.0f ₽ — медиатор, струны или нотная тетрадь.", p),
+				fmt.Sprintf("%.0f ₽ на Bandcamp — поддержи артиста напрямую, скачай альбом навсегда.", p),
+				fmt.Sprintf("%.0f ₽ = разовое занятие вокалом или игрой на гитаре.", p),
+			}
+		case p <= 1000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — 6 месяцев Яндекс Музыки или Spotify (с промо).", p),
+				fmt.Sprintf("%.0f ₽ — набор медиаторов, капо и струны — полный комплект.", p),
+				fmt.Sprintf("%.0f ₽ — билет на концерт инди-группы в клубе.", p),
+				fmt.Sprintf("%.0f ₽ — онлайн-курс игры на гитаре/фортепиано на Skillshare.", p),
+				fmt.Sprintf("%.0f ₽ — USB-микрофон начального уровня для записи идей.", p),
+			}
+		case p <= 5000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — наушники Sony WH-1000XM4 б/у на Авито (тишина в потоке).", p),
+				fmt.Sprintf("%.0f ₽ — bluetooth-колонка JBL Charge — музыка везде.", p),
+				fmt.Sprintf("%.0f ₽ на укулеле или начальную акустику — начни играть сам.", p),
+				fmt.Sprintf("%.0f ₽ — билет на концерт крупной группы + ещё останется.", p),
+				fmt.Sprintf("%.0f ₽ — MIDI-клавиатура для домашних записей.", p),
+			}
+		default:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — наушники Sony XM5 или AirPods Pro: звук, который изменит восприятие.", p),
+				fmt.Sprintf("%.0f ₽ — электрогитара начального уровня + усилитель.", p),
+				fmt.Sprintf("%.0f ₽ — аудиоинтерфейс + микрофон: начни записывать свою музыку.", p),
+			}
+		}
+
+	case "Мода":
+		switch {
+		case p <= 300:
+			return []string{
+				fmt.Sprintf("%.0f ₽ на Авито — найдёшь нормальную вещь б/у, часто почти новую.", p),
+				fmt.Sprintf("%.0f ₽ — аксессуар: напоясная сумка, носки с принтом, базовый браслет.", p),
+				fmt.Sprintf("%.0f ₽ — уход за одеждой: щётка, пятновыводитель, шайба для стирки.", p),
+				fmt.Sprintf("%.0f ₽ — крем для обуви и средство для кожи: продлишь жизнь любимой паре.", p),
+			}
+		case p <= 1000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ на Вайлдберриз — найдёшь похожую вещь в 2–3 раза дешевле.", p),
+				fmt.Sprintf("%.0f ₽ — базовая вещь на Uniqlo: футболка, носки, нижнее бельё.", p),
+				fmt.Sprintf("%.0f ₽ на Авито: брендовая вещь б/у по цене no-name новой.", p),
+				fmt.Sprintf("%.0f ₽ — сезонная распродажа в Zara или H&M: покупай со скидкой 50%%.", p),
+				fmt.Sprintf("%.0f ₽ — ремонт любимой вещи у портного: новая жизнь за копейки.", p),
+			}
+		case p <= 5000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — одна качественная вещь (Uniqlo Premium, Levi's), которая прослужит 5 лет.", p),
+				fmt.Sprintf("%.0f ₽ — капсульный гардероб на Авито: 3–4 базовые вещи б/у.", p),
+				fmt.Sprintf("%.0f ₽ — кеды New Balance или Nike б/у на Авито в отличном состоянии.", p),
+				fmt.Sprintf("%.0f ₽ — курс по стилю или личный консультант на одну сессию.", p),
+			}
+		default:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — одна вещь премиум-бренда б/у (Mango, Reserved, Massimo Dutti).", p),
+				fmt.Sprintf("%.0f ₽ — полное обновление гардероба на Авито: 10–15 вещей.", p),
+				fmt.Sprintf("%.0f ₽ — кожаная обувь или сумка, которая переживёт 10 лет.", p),
+			}
+		}
+
+	case "Технологии":
+		switch {
+		case p <= 300:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — курс на Stepik по Python, SQL или веб-разработке.", p),
+				fmt.Sprintf("%.0f ₽ — книга «Чистый код» или «Алгоритмы» на Озоне.", p),
+				fmt.Sprintf("%.0f ₽ — месяц Notion Pro или другого инструмента продуктивности.", p),
+				fmt.Sprintf("%.0f ₽ — кабель USB-C быстрой зарядки или концентратор USB.", p),
+			}
+		case p <= 1000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — полный курс на Udemy (берут во время скидок за 400–600 ₽).", p),
+				fmt.Sprintf("%.0f ₽ — месяц доступа к Coursera или Skillbox по нужной теме.", p),
+				fmt.Sprintf("%.0f ₽ — SD-карта или USB-хаб с питанием для ноутбука.", p),
+				fmt.Sprintf("%.0f ₽ — подписка на инструмент разработчика: GitHub Copilot, Figma Pro.", p),
+				fmt.Sprintf("%.0f ₽ — 2–3 технических книги: «Философия разработки» или «Грокаем алгоритмы».", p),
+			}
+		case p <= 5000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — механическая клавиатура б/у: печатать быстрее и приятнее.", p),
+				fmt.Sprintf("%.0f ₽ — Raspberry Pi 4 — целый компьютер для экспериментов.", p),
+				fmt.Sprintf("%.0f ₽ — портативный SSD 500 ГБ — данные всегда при себе.", p),
+				fmt.Sprintf("%.0f ₽ — умные часы Xiaomi б/у или Band 7 новый.", p),
+				fmt.Sprintf("%.0f ₽ — профессиональный курс с сертификатом (AWS, Google).", p),
+			}
+		default:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — монитор 27\" IPS б/у на Авито — продуктивность вырастет.", p),
+				fmt.Sprintf("%.0f ₽ — ноутбук б/у: ThinkPad X1 Carbon или MacBook Pro.", p),
+				fmt.Sprintf("%.0f ₽ — серьёзный гаджет или профессиональное оборудование.", p),
+			}
+		}
+
+	case "Спорт":
+		switch {
+		case p <= 300:
+			return []string{
+				fmt.Sprintf("%.0f ₽ = разовое занятие в зале или бассейне.", p),
+				fmt.Sprintf("%.0f ₽ — фитнес-резинки или эспандер для дома.", p),
+				fmt.Sprintf("%.0f ₽ — бутылка для воды с разметкой — следи за гидрацией.", p),
+				fmt.Sprintf("%.0f ₽ — спортивные носки или напульсники.", p),
+			}
+		case p <= 1000:
+									return []string{
+				fmt.Sprintf("%.0f ₽ = месяц занятий в зале (у многих клубов акции).", p),
+				fmt.Sprintf("%.0f ₽ — скакалка Speed + разметочный коврик для дома.", p),
+				fmt.Sprintf("%.0f ₽ — спортивный рюкзак или сумка для зала.", p),
+				fmt.Sprintf("%.0f ₽ — фитнес-браслет Xiaomi Band б/у: следи за пульсом.", p),
+				fmt.Sprintf("%.0f ₽ — онлайн-курс по йоге, бегу или калистеники.", p),
+			}
+		case p <= 5000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — 3 месяца в зале или секции по интересному виду спорта.", p),
+				fmt.Sprintf("%.0f ₽ — спортивная одежда Nike/Adidas б/у или кроссовки для бега.", p),
+				fmt.Sprintf("%.0f ₽ — гири, гантели или турник домашний — инвентарь навсегда.", p),
+				fmt.Sprintf("%.0f ₽ — велосипед б/у на Авито — и спорт, и транспорт.", p),
+			}
+		default:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — годовой абонемент в зал + персональная тренировка.", p),
+				fmt.Sprintf("%.0f ₽ — беговые кроссовки Asics или Brooks + анализ техники бега.", p),
+				fmt.Sprintf("%.0f ₽ — серьёзный инвентарь: байдарка, лыжи, сноуборд б/у.", p),
+			}
+		}
+
+	case "Книги":
+		switch {
+		case p <= 300:
+			return []string{
+				fmt.Sprintf("%.0f ₽ = 1–2 книги на Озоне или литровая электронка.", p),
+				fmt.Sprintf("%.0f ₽ = месяц Bookmate: тысячи книг и аудиокниг.", p),
+				fmt.Sprintf("%.0f ₽ — скидочный сертификат Читай-Города или Лабиринта.", p),
+				fmt.Sprintf("%.0f ₽ — подписка на журнал по интересующей теме.", p),
+			}
+		case p <= 1000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ = 3–4 книги в Лабиринте или год Bookmate Стандарт.", p),
+				fmt.Sprintf("%.0f ₽ — полное собрание одного автора: Достоевский, Булгаков, Толстой.", p),
+				fmt.Sprintf("%.0f ₽ — аудиокнига + Storytel на месяц — слушай в дороге.", p),
+				fmt.Sprintf("%.0f ₽ — книги по нон-фикшн: «Думай медленно», «Атомные привычки».", p),
+				fmt.Sprintf("%.0f ₽ — обложка для читалки + подставка для чтения лёжа.", p),
+			}
+		case p <= 5000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — библиотека из 10–15 книг любимого жанра.", p),
+				fmt.Sprintf("%.0f ₽ — Kindle Paperwhite б/у: 10 000 книг в кармане навсегда.", p),
+				fmt.Sprintf("%.0f ₽ — подписка на несколько сервисов + бумажные книги.", p),
+				fmt.Sprintf("%.0f ₽ — красивое подарочное издание любимой книги.", p),
+			}
+		default:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — Kindle Paperwhite новый + годовая подписка Bookmate.", p),
+				fmt.Sprintf("%.0f ₽ — полная коллекция серии: «Ведьмак», «Гарри Поттер», «Властелин колец».", p),
+				fmt.Sprintf("%.0f ₽ — умная полка + 20 книг любимого автора.", p),
+			}
+		}
+
+	case "Путешествия":
+		switch {
+		case p <= 300:
+			return []string{
+				fmt.Sprintf("%.0f ₽ в копилку на путешествие — маленький шаг к большой цели.", p),
+				fmt.Sprintf("%.0f ₽ — путеводитель по городу мечты или карта для планирования.", p),
+				fmt.Sprintf("%.0f ₽ — дневник путешественника: записывай маршруты и впечатления.", p),
+			}
+		case p <= 1000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — автобус или ласточка в соседний город на выходные.", p),
+				fmt.Sprintf("%.0f ₽ в накопительный счёт на поездку — уже серьёзно.", p),
+				fmt.Sprintf("%.0f ₽ — экскурсия по своему городу: часто открываешь заново.", p),
+				fmt.Sprintf("%.0f ₽ — хостел на одну ночь в ближайшем городе — мини-путешествие.", p),
+			}
+		case p <= 5000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — билет на поезд или автобус + жильё в ближайшем городе.", p),
+				fmt.Sprintf("%.0f ₽ — рюкзак туристический б/у на Авито — главный инструмент путника.", p),
+				fmt.Sprintf("%.0f ₽ — тур выходного дня: экскурсионный автобус в область.", p),
+				fmt.Sprintf("%.0f ₽ — кемпинговое снаряжение: палатка + спальник б/у.", p),
+			}
+		default:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — билет на самолёт + 2 ночи в хостеле: реальная поездка.", p),
+				fmt.Sprintf("%.0f ₽ — перелёт в новый город + месяц впечатлений.", p),
+				fmt.Sprintf("%.0f ₽ — приличная часть бюджета на поездку мечты.", p),
+			}
+		}
+
+	case "Еда":
+		switch {
+		case p <= 300:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — качественные продукты для блюда, которое давно хотел приготовить.", p),
+				fmt.Sprintf("%.0f ₽ — специи и соусы из разных кухонь мира: попробуй новый вкус.", p),
+				fmt.Sprintf("%.0f ₽ — хороший кофе домой: в 5 раз дешевле кофейни.", p),
+				fmt.Sprintf("%.0f ₽ — кулинарная книга б/у: тысячи рецептов навсегда.", p),
+			}
+		case p <= 1000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — кулинарный мастер-класс или дегустация вина.", p),
+				fmt.Sprintf("%.0f ₽ — ужин дома с дорогими продуктами вместо ресторана.", p),
+				fmt.Sprintf("%.0f ₽ — набор специй со всего мира или соусов для экспериментов.", p),
+				fmt.Sprintf("%.0f ₽ — хорошая сковорода или нож б/у — кухня станет лучше.", p),
+				fmt.Sprintf("%.0f ₽ — бокс с продуктами от фермеров (METRO, ВкусВилл).", p),
+			}
+		case p <= 5000:
+									return []string{
+				fmt.Sprintf("%.0f ₽ — качественный нож шеф-повара: прослужит 15 лет.", p),
+				fmt.Sprintf("%.0f ₽ — кулинарный онлайн-курс от шеф-повара (Skillbox, Udemy).", p),
+				fmt.Sprintf("%.0f ₽ — чугунная сковорода или вок: инструмент на всю жизнь.", p),
+				fmt.Sprintf("%.0f ₽ — кофемашина кепсульная б/у: 30–40 ₽ за кофе вместо 300.", p),
+			}
+		default:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — блендер или кухонный комбайн: готовить станет в разы быстрее.", p),
+				fmt.Sprintf("%.0f ₽ — кофемашина рожковая: лучший кофе дома навсегда.", p),
+				fmt.Sprintf("%.0f ₽ — профессиональный кухонный прибор, который окупится за год.", p),
+			}
+		}
+
+	case "Творчество":
+		switch {
+		case p <= 300:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — скетчбук А5 + набор ручек или маркеров.", p),
+				fmt.Sprintf("%.0f ₽ — акварель или гуашь: попробуй новую технику.", p),
+				fmt.Sprintf("%.0f ₽ — моток пряжи или нитки для вышивки.", p),
+				fmt.Sprintf("%.0f ₽ — трафареты и кисти для каллиграфии.", p),
+			}
+		case p <= 1000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — онлайн-курс рисования или иллюстрации (Skillshare, Udemy).", p),
+				fmt.Sprintf("%.0f ₽ — набор маркеров Copic Sketch или Molotow — профессиональный уровень.", p),
+				fmt.Sprintf("%.0f ₽ — холст + масляные краски + кисти — полный стартовый набор.", p),
+				fmt.Sprintf("%.0f ₽ — книга по иллюстрации, каллиграфии или скетчингу.", p),
+				fmt.Sprintf("%.0f ₽ — линер Micron, бумага для акварели, набор пастели.", p),
+			}
+		case p <= 5000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — графический планшет Wacom One: рисуй на компьютере.", p),
+				fmt.Sprintf("%.0f ₽ — профессиональные акварельные краски Schmincke или Winsor.", p),
+				fmt.Sprintf("%.0f ₽ — курс по иллюстрации в школе с преподавателем.", p),
+				fmt.Sprintf("%.0f ₽ — фотоаппарат б/у: начни снимать всё, что вдохновляет.", p),
+			}
+		default:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — iPad б/у + Apple Pencil: полноценный инструмент дизайнера.", p),
+				fmt.Sprintf("%.0f ₽ — зеркалка б/у Canon или Nikon — серьёзная фотография.", p),
+				fmt.Sprintf("%.0f ₽ — планшет Wacom Intuus Pro + годовая подписка Adobe.", p),
+			}
+		}
+
+	case "Кино и сериалы":
+		switch {
+		case p <= 300:
+			return []string{
+				fmt.Sprintf("%.0f ₽ = 1.5 месяца Кинопоиска Базового (199 ₽/мес).", p),
+				fmt.Sprintf("%.0f ₽ = 3 месяца ИВИ по акции (99 ₽/мес при годовой оплате).", p),
+				fmt.Sprintf("%.0f ₽ — книга, по которой снят любимый фильм.", p),
+				fmt.Sprintf("%.0f ₽ — попкорн + хорошее кино дома: своя кинотека.", p),
+			}
+		case p <= 1000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — месяц Кинопоиска Мульти с 4K (499 ₽/мес).", p),
+				fmt.Sprintf("%.0f ₽ = 2 билета в кино + попкорн — реальный поход в кинотеатр.", p),
+				fmt.Sprintf("%.0f ₽ = полгода ИВИ + месяц Okko: разные библиотеки.", p),
+				fmt.Sprintf("%.0f ₽ — Blu-ray диск любимого фильма в коллекционном издании.", p),
+				fmt.Sprintf("%.0f ₽ — подписка Apple TV+ или Netflix на месяц.", p),
+			}
+		case p <= 5000:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — саундбар Sony или LG: звук как в кино, дома.", p),
+				fmt.Sprintf("%.0f ₽ — Chromecast или Fire TV Stick 4K: стриминг на любой телевизор.", p),
+				fmt.Sprintf("%.0f ₽ — год подписки Кинопоиск Мульти — весь контент без ограничений.", p),
+				fmt.Sprintf("%.0f ₽ — кресло-мешок или подушки — обустрой зону для кино дома.", p),
+			}
+		default:
+			return []string{
+				fmt.Sprintf("%.0f ₽ — проектор Full HD б/у: кино на стене 100–150 дюймов.", p),
+				fmt.Sprintf("%.0f ₽ — телевизор 43\" 4K б/у на Авито + год Кинопоиска.", p),
+				fmt.Sprintf("%.0f ₽ — акустика 2.1 или саундбар с сабвуфером — кинотеатр дома.", p),
+			}
+		}
+	}
+	return nil
+}
+
+func buildSmartSuggestion(verdict string, input aiCheckRequest, recentSuggestions []string) string {
 	if verdict == "go" {
 		return ""
 	}
@@ -478,70 +833,26 @@ func buildSmartSuggestion(verdict string, input aiCheckRequest) string {
 	}
 
 	price := input.Price
-	interest := input.Profile.Interests[0]
 
-	type rangeEntry struct {
-		maxPrice float64
-		tips     map[string]string
-	}
+	// Try each interest in order until we find a non-repeated suggestion
+	for _, interest := range input.Profile.Interests {
+		pool := suggestionPool(interest, price)
+		if len(pool) == 0 {
+			continue
+		}
 
-	ranges := []rangeEntry{
-		{300, map[string]string{
-			"Игры":           fmt.Sprintf("%.0f ₽ — это инди-игра в Steam по акции, если ты геймер.", price),
-			"Музыка":         fmt.Sprintf("%.0f ₽ = месяц Яндекс Музыки без рекламы.", price),
-			"Мода":           fmt.Sprintf("%.0f ₽ на Авито — найдёшь нормальную вещь secondhand.", price),
-			"Технологии":     fmt.Sprintf("%.0f ₽ — хорошая книга по теме или курс на Stepik.", price),
-			"Спорт":          fmt.Sprintf("%.0f ₽ = разовое занятие в зале или новые резинки.", price),
-			"Книги":          fmt.Sprintf("%.0f ₽ = 1–2 книги на Озоне или месяц Bookmate.", price),
-			"Путешествия":    fmt.Sprintf("%.0f ₽ в копилку — шаг к следующей поездке.", price),
-			"Еда":            fmt.Sprintf("%.0f ₽ на хорошие продукты для блюда, которое давно хотел.", price),
-			"Творчество":     fmt.Sprintf("%.0f ₽ на материалы — скетчбук, краски, новый холст.", price),
-			"Кино и сериалы": fmt.Sprintf("%.0f ₽ = 1.5 месяца Кинопоиска.", price),
-		}},
-		{1000, map[string]string{
-			"Игры":           fmt.Sprintf("%.0f ₽ — AAA-игра на распродаже в Steam для геймера.", price),
-			"Музыка":         fmt.Sprintf("%.0f ₽ — 5 месяцев Яндекс Музыки без рекламы.", price),
-			"Мода":           fmt.Sprintf("%.0f ₽ на Вайлдберриз — найдёшь то же лучше и дешевле.", price),
-			"Технологии":     fmt.Sprintf("%.0f ₽ — полноценный курс на Stepik по интересующей теме.", price),
-			"Спорт":          fmt.Sprintf("%.0f ₽ = месяц занятий в зале или комплект для дома.", price),
-			"Книги":          fmt.Sprintf("%.0f ₽ = 3–4 книги или годовая подписка на электронную библиотеку.", price),
-			"Путешествия":    fmt.Sprintf("%.0f ₽ в копилку — уже серьёзный вклад в поездку.", price),
-			"Еда":            fmt.Sprintf("%.0f ₽ на кулинарный мастер-класс или дегустацию — новый опыт.", price),
-			"Творчество":     fmt.Sprintf("%.0f ₽ на хорошие инструменты — кисти, планшет Wacom базовый.", price),
-			"Кино и сериалы": fmt.Sprintf("%.0f ₽ — примерно месяц Кинопоиска Мульти с 4K (499 ₽/мес).", price),
-		}},
-		{5000, map[string]string{
-			"Игры":           fmt.Sprintf("%.0f ₽ — геймпад или несколько новых игр.", price),
-			"Музыка":         fmt.Sprintf("%.0f ₽ — хорошие наушники или колонка для твоей музыки.", price),
-			"Мода":           fmt.Sprintf("%.0f ₽ на вещь, которая прослужит годами — инвестиция в качество.", price),
-			"Технологии":     fmt.Sprintf("%.0f ₽ — продвинутый курс или технический гаджет.", price),
-			"Спорт":          fmt.Sprintf("%.0f ₽ — качественный спортивный инвентарь на долгий срок.", price),
-			"Книги":          fmt.Sprintf("%.0f ₽ — библиотека из 10+ книг любимого автора или серии.", price),
-			"Путешествия":    fmt.Sprintf("%.0f ₽ — билет на поезд или автобус в соседний город.", price),
-			"Еда":            fmt.Sprintf("%.0f ₽ — качественный кухонный инструмент, который будет служить годами.", price),
-			"Творчество":     fmt.Sprintf("%.0f ₽ — планшет для рисования или профессиональные краски.", price),
-			"Кино и сериалы": fmt.Sprintf("%.0f ₽ — саундбар или улучши домашний просмотр.", price),
-		}},
-		{1e18, map[string]string{
-			"Игры":           fmt.Sprintf("%.0f ₽ — серьёзное обновление игровой периферии.", price),
-			"Музыка":         fmt.Sprintf("%.0f ₽ — вложи в звук: наушники, которые изменят восприятие музыки.", price),
-			"Мода":           fmt.Sprintf("%.0f ₽ — одна вещь премиум-качества лучше трёх дешёвых.", price),
-			"Технологии":     fmt.Sprintf("%.0f ₽ — серьёзный гаджет или профессиональное оборудование.", price),
-			"Спорт":          fmt.Sprintf("%.0f ₽ — снаряжение для любимого вида спорта, надолго.", price),
-			"Книги":          fmt.Sprintf("%.0f ₽ — полная коллекция + красивое издание.", price),
-			"Путешествия":    fmt.Sprintf("%.0f ₽ — уже приличная часть бюджета на поездку мечты.", price),
-			"Еда":            fmt.Sprintf("%.0f ₽ — профессиональный кухонный прибор навсегда.", price),
-			"Творчество":     fmt.Sprintf("%.0f ₽ — камера, хороший планшет или полный набор материалов.", price),
-			"Кино и сериалы": fmt.Sprintf("%.0f ₽ — проектор или серьёзный апгрейд домашнего кино.", price),
-		}},
-	}
+		usedSet := make(map[string]bool, len(recentSuggestions))
+		for _, s := range recentSuggestions {
+			usedSet[s] = true
+		}
 
-	for _, r := range ranges {
-		if price <= r.maxPrice {
-			if tip, ok := r.tips[interest]; ok {
-				return tip
+		for _, candidate := range pool {
+			if !usedSet[candidate] {
+				return candidate
 			}
 		}
+		// All candidates used for this interest — fall back to last one (still better than nothing)
+		return pool[len(pool)-1]
 	}
 	return ""
 }
@@ -763,7 +1074,7 @@ func isRiskyTime() bool {
 	return hour < 6 || hour >= 21
 }
 
-func buildAIPrompt(input aiCheckRequest) string {
+func buildAIPrompt(input aiCheckRequest, recentSuggestions []string) string {
 	profileLines := []string{}
 	if input.Profile != nil {
 		p := input.Profile
@@ -833,6 +1144,18 @@ func buildAIPrompt(input aiCheckRequest) string {
 		mood = input.Answers.Mood
 	}
 
+	usedNote := ""
+	if len(recentSuggestions) > 0 {
+		limit := len(recentSuggestions)
+		if limit > 10 {
+			limit = 10
+		}
+		usedNote = "\nУже использованные советы (suggestion должно ПРИНЦИПИАЛЬНО отличаться — другой сервис/активность):\n"
+		for i, s := range recentSuggestions[:limit] {
+			usedNote += fmt.Sprintf("  %d. %s\n", i+1, s)
+		}
+	}
+
 	return fmt.Sprintf(`=== АНАЛИЗ ===
 Товар: «%s»
 Цена: %.0f ₽%s
@@ -841,7 +1164,7 @@ func buildAIPrompt(input aiCheckRequest) string {
 Думал: %s
 Настроение: %s
 %s
-История: %s%s%s`,
+История: %s%s%s%s`,
 		input.Name,
 		input.Price,
 		func() string {
@@ -858,6 +1181,7 @@ func buildAIPrompt(input aiCheckRequest) string {
 		historySummary,
 		timeNote,
 		impulseNote,
+		usedNote,
 	)
 }
 
