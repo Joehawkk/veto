@@ -210,8 +210,6 @@ func buildFallbackAIResponse(input aiCheckRequest) aiCheckResponse {
 		nextStep = "Сейчас разумнее отказаться и сохранить деньги на более важную цель или действительно нужную покупку."
 	}
 
-	hobbyTip := buildFallbackHobbyTip(input.Profile, input.Price, verdict)
-
 	return aiCheckResponse{
 		Verdict: verdict,
 		Tip: strings.Join(compactSentences(
@@ -219,7 +217,7 @@ func buildFallbackAIResponse(input aiCheckRequest) aiCheckResponse {
 			buildReasonSentence(reasons),
 			nextStep,
 		), " "),
-		HobbyTip: hobbyTip,
+		HobbyTip: "",
 		Source:   "fallback",
 	}
 }
