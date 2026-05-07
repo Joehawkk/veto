@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import {
-  getCheckResult, getCurrent, addHistoryEntry,
-  updateOutcome, setTimerDeadline, getHistory,
-} from '../lib/storage'
+import { getCheckResult, getCurrent } from '../lib/storage'
 import { getVerdictMeta } from '../lib/scoring'
 import { useAI, type AIResult } from '../hooks/useAI'
 import { useProfile } from '../hooks/useProfile'
-import { v4 as uuid } from 'uuid'
+import { api } from '../api/client'
 
 const TIMER_OPTIONS = [
   { label: '1 день',  days: 1 },
@@ -151,7 +148,7 @@ export default function Result() {
   const { getAIResult } = useAI()
   const { profile } = useProfile()
   const saved = useRef(false)
-  const [entryId] = useState(() => uuid())
+  const [checkId, setCheckId] = useState<string | null>(null)
   const [aiResult, setAiResult] = useState<AIResult | null>(null)
   const [timerSet, setTimerSet] = useState(false)
   const [timerDays, setTimerDays] = useState<number | null>(null)
@@ -164,20 +161,20 @@ export default function Result() {
     if (!current || !checkResult) { navigate('/'); return }
     if (saved.current) return
     saved.current = true
-    const recentHistory = getHistory().slice(0, 6)
     getAIResult({
       name: current.name, price: current.price,
       hasDiscount: current.hasDiscount,
       answers: checkResult.answers, localVerdict: checkResult.localVerdict,
-      profile, recentHistory,
+      profile, recentHistory: [],
     }).then((result) => {
       setAiResult(result)
-      addHistoryEntry({
-        id: entryId, name: current.name, price: current.price,
-        hasDiscount: current.hasDiscount, answers: checkResult.answers,
-        aiVerdict: result.verdict, aiComment: result.tip,
-        outcome: 'pending', createdAt: new Date().toISOString(),
-      })
+      api.checks.create({
+        name: current.name, price: current.price,
+        has_discount: current.hasDiscount,
+        answers: checkResult.answers,
+        ai_verdict: result.verdict, ai_comment: result.tip,
+        outcome: 'pending',
+      }).then(({ data }) => setCheckId(data.id)).catch(() => {})
     })
   }, [])
 
@@ -185,11 +182,10 @@ export default function Result() {
   if (!aiResult) return <LoadingScreen name={current.name} price={current.price} />
 
   if (showCelebration) {
-    const totalSaved = getHistory().filter((e) => e.outcome === 'stopped').reduce((s, e) => s + e.price, 0)
     const suggestion = pickSuggestion(profile?.interests ?? [])
     return (
       <CelebrationScreen
-        name={current.name} price={current.price} totalSaved={totalSaved}
+        name={current.name} price={current.price} totalSaved={0}
         suggestion={suggestion} onHome={() => navigate('/')} onHistory={() => navigate('/history')}
       />
     )
@@ -198,14 +194,17 @@ export default function Result() {
   const v = getVerdictMeta(aiResult.verdict)
 
   function handleOutcome(outcome: 'stopped' | 'bought') {
-    updateOutcome(entryId, outcome)
-    if (outcome === 'stopped') setShowCelebration(true)
-    else navigate('/')
+    if (checkId) api.checks.update(checkId, { outcome }).catch(() => {})
+    if (outcome === 'stopped') {
+      setShowCelebration(true)
+    } else {
+      navigate('/')
+    }
   }
 
   function handleSetTimer(days: number) {
     const d = new Date(); d.setDate(d.getDate() + days)
-    setTimerDeadline(entryId, d.toISOString())
+    if (checkId) api.checks.update(checkId, { timer_deadline: d.toISOString() }).catch(() => {})
     setTimerDays(days); setTimerSet(true)
   }
 
@@ -231,6 +230,17 @@ export default function Result() {
       </div>
 
       <div className="flex-1 px-6 py-6 flex flex-col gap-4 overflow-y-auto pb-8">
+
+        {/* Hobby tip — only for wait/veto with interests */}
+        {aiResult.hobbyTip && aiResult.verdict !== 'go' && (
+          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">💡</span>
+              <p className="text-dark font-black text-sm">Лучше потрать на это</p>
+            </div>
+            <p className="text-gray-dark text-sm leading-relaxed">{aiResult.hobbyTip}</p>
+          </div>
+        )}
 
         {/* Item info */}
         <div className="flex items-center justify-between py-3 px-4 bg-white border border-border rounded-xl shadow-card">

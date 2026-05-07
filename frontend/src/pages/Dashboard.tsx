@@ -125,7 +125,7 @@ export default function Dashboard() {
   async function loadProfile() {
     try {
       const { data } = await api.profile.get()
-      setActiveGoal(data.active_goal)
+      setActiveGoal(data.active_goal ?? null)
       setGoals(data.goals ?? [])
     } finally {
       setLoading(false)

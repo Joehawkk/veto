@@ -5,6 +5,7 @@ import { type Profile, type CheckAnswers, type HistoryEntry } from '../lib/stora
 export interface AIResult {
   verdict: Verdict
   tip: string
+  hobbyTip: string
 }
 
 export function useAI() {
@@ -21,14 +22,13 @@ export function useAI() {
       const fallback: AIResult = {
         verdict: params.localVerdict,
         tip: 'AI временно недоступен. Вердикт рассчитан на основе твоих ответов.',
+        hobbyTip: '',
       }
 
       try {
         const res = await fetch('/api/ai/check', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(params),
         })
 
@@ -41,6 +41,7 @@ export function useAI() {
         return {
           verdict: data.verdict as Verdict,
           tip: data.tip.trim(),
+          hobbyTip: typeof data.hobby_tip === 'string' ? data.hobby_tip.trim() : '',
         }
       } catch {
         return fallback

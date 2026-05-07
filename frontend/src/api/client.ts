@@ -94,6 +94,24 @@ export interface Notification {
   created_at: string
 }
 
+export interface CheckEntry {
+  id: string
+  name: string
+  price: number
+  has_discount: boolean
+  answers: {
+    needNow: boolean
+    hasSimilar: boolean
+    thoughtDuration: string
+    mood: string
+  }
+  ai_verdict: string
+  ai_comment: string
+  outcome: 'stopped' | 'bought' | 'pending'
+  timer_deadline: string | null
+  created_at: string
+}
+
 export const api = {
   auth: {
     register: (data: { username: string; display_name: string; password: string }) =>
@@ -142,6 +160,16 @@ export const api = {
   },
   users: {
     list: () => client.get<AccountUser[]>('/users'),
+  },
+  checks: {
+    list: () => client.get<CheckEntry[]>('/checks'),
+    create: (data: {
+      name: string; price: number; has_discount: boolean
+      answers: object; ai_verdict: string; ai_comment: string
+      outcome?: string; timer_deadline?: string | null
+    }) => client.post<{ id: string }>('/checks', data),
+    update: (id: string, data: { outcome?: string; timer_deadline?: string | null }) =>
+      client.patch(`/checks/${id}`, data),
   },
 }
 

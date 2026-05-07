@@ -1,8 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useHistory } from '../hooks/useHistory'
-import { type HistoryEntry } from '../lib/storage'
-import { getVerdictMeta } from '../lib/scoring'
-import { api } from '../api/client'
+import { useChecks } from '../hooks/useChecks'
+import { type CheckEntry } from '../api/client'
+import { getVerdictMeta, type Verdict } from '../lib/scoring'
 import BottomNav from '../components/BottomNav'
 
 const OUTCOME = {
@@ -11,13 +10,13 @@ const OUTCOME = {
   pending: { label: 'Ожидает',   icon: '⏳' },
 }
 
-function outcomeCardClass(entry: HistoryEntry): string {
+function outcomeCardClass(entry: CheckEntry): string {
   if (entry.outcome === 'stopped') {
     return 'border-green-400 bg-green-50 shadow-[0_0_0_1px_rgba(74,222,128,0.4)]'
   }
   if (entry.outcome === 'bought') {
-    if (entry.aiVerdict === 'go')   return 'border-green-400 bg-green-50 shadow-[0_0_0_1px_rgba(74,222,128,0.4)]'
-    if (entry.aiVerdict === 'wait') return 'border-amber-400 bg-amber-50 shadow-[0_0_0_1px_rgba(251,191,36,0.4)]'
+    if (entry.ai_verdict === 'go')   return 'border-green-400 bg-green-50 shadow-[0_0_0_1px_rgba(74,222,128,0.4)]'
+    if (entry.ai_verdict === 'wait') return 'border-amber-400 bg-amber-50 shadow-[0_0_0_1px_rgba(251,191,36,0.4)]'
     return 'border-red-400 bg-red-50 shadow-[0_0_0_1px_rgba(248,113,113,0.4)]'
   }
   return 'border-border bg-white'
@@ -34,21 +33,14 @@ function getTimeLeft(deadline: string): string {
   return `ещё ${m} мин`
 }
 
-function Card({ entry, onOutcome }: { entry: HistoryEntry; onOutcome: (id: string, o: 'stopped' | 'bought') => void }) {
+function Card({ entry, onOutcome }: { entry: CheckEntry; onOutcome: (id: string, o: 'stopped' | 'bought') => void }) {
   const navigate = useNavigate()
-  const v = getVerdictMeta(entry.aiVerdict)
+  const v = getVerdictMeta(entry.ai_verdict as Verdict)
   const o = OUTCOME[entry.outcome]
   const isPending = entry.outcome === 'pending'
-  const hasTimer = isPending && !!entry.timerDeadline
-  const expired = hasTimer && new Date(entry.timerDeadline!).getTime() < Date.now()
-  const date = new Date(entry.createdAt).toLocaleDateString('ru', { day: 'numeric', month: 'short' })
-
-  function handleOutcome(outcome: 'stopped' | 'bought') {
-    onOutcome(entry.id, outcome)
-    if (outcome === 'stopped') {
-      api.vetos.create({ amount: entry.price, description: entry.name }).catch(() => {})
-    }
-  }
+  const hasTimer = isPending && !!entry.timer_deadline
+  const expired = hasTimer && new Date(entry.timer_deadline!).getTime() < Date.now()
+  const date = new Date(entry.created_at).toLocaleDateString('ru', { day: 'numeric', month: 'short' })
 
   return (
     <div
@@ -59,7 +51,7 @@ function Card({ entry, onOutcome }: { entry: HistoryEntry; onOutcome: (id: strin
         <div className="flex-1 min-w-0">
           <p className="text-dark font-bold truncate">{entry.name}</p>
           <p className="text-muted text-xs mt-0.5">
-            {date}{entry.hasDiscount && <span className="ml-2 text-[#F86D06]">🏷️</span>}
+            {date}{entry.has_discount && <span className="ml-2 text-[#F86D06]">🏷️</span>}
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -77,7 +69,6 @@ function Card({ entry, onOutcome }: { entry: HistoryEntry; onOutcome: (id: strin
         </span>
       </div>
 
-      {/* Timer badge */}
       {hasTimer && (
         <div className={`mt-3 text-xs px-3 py-2 rounded-xl flex items-center gap-2 ${
           expired
@@ -85,26 +76,24 @@ function Card({ entry, onOutcome }: { entry: HistoryEntry; onOutcome: (id: strin
             : 'bg-[#FFDE8A]/40 border border-[#FF9E30]/30 text-[#F86D06]'
         }`}>
           <span>⏰</span>
-          <span>{expired ? '⚠️ Время вышло — пора решить!' : getTimeLeft(entry.timerDeadline!)}</span>
+          <span>{expired ? '⚠️ Время вышло — пора решить!' : getTimeLeft(entry.timer_deadline!)}</span>
         </div>
       )}
 
-      {/* AI comment */}
-      {entry.aiComment && (
-        <p className="text-muted text-xs mt-3 leading-relaxed line-clamp-2">🤖 {entry.aiComment}</p>
+      {entry.ai_comment && (
+        <p className="text-muted text-xs mt-3 leading-relaxed line-clamp-2">🤖 {entry.ai_comment}</p>
       )}
 
-      {/* Mark buttons */}
       {isPending && (
         <div className="flex gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => handleOutcome('stopped')}
+            onClick={() => onOutcome(entry.id, 'stopped')}
             className="flex-1 bg-primary/10 border border-primary/25 text-primary text-sm font-bold py-2.5 rounded-xl hover:bg-primary/20 active:scale-95 transition-all"
           >
             💚 Отказался
           </button>
           <button
-            onClick={() => handleOutcome('bought')}
+            onClick={() => onOutcome(entry.id, 'bought')}
             className="flex-1 bg-bg border border-border text-gray-dark text-sm font-bold py-2.5 rounded-xl hover:border-border-dark active:scale-95 transition-all"
           >
             🛒 Купил
@@ -116,20 +105,18 @@ function Card({ entry, onOutcome }: { entry: HistoryEntry; onOutcome: (id: strin
 }
 
 export default function History() {
-  const { history, stats, setOutcome } = useHistory()
+  const { checks, stats, setOutcome, loading } = useChecks()
 
   return (
     <div className="min-h-screen bg-bg">
-      {/* Header */}
       <header className="flex items-center gap-4 px-6 py-5 bg-white border-b border-border">
         <div className="flex-1">
           <h1 className="text-xl font-black text-dark">История</h1>
-          <p className="text-muted text-xs">{history.length} проверок</p>
+          <p className="text-muted text-xs">{checks.length} проверок</p>
         </div>
       </header>
 
       <main className="px-6 py-6 pb-24 max-w-md mx-auto">
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="bg-white border border-border rounded-2xl p-3 text-center shadow-card">
             <p className="text-primary font-black text-lg">{stats.saved.toLocaleString('ru')}</p>
@@ -145,7 +132,6 @@ export default function History() {
           </div>
         </div>
 
-        {/* Pending alert */}
         {stats.pending > 0 && (
           <div className="bg-[#FFDE8A]/40 border border-[#FF9E30]/40 rounded-2xl px-4 py-3 mb-5 flex items-center gap-3">
             <span className="text-xl">⏳</span>
@@ -155,8 +141,11 @@ export default function History() {
           </div>
         )}
 
-        {/* List */}
-        {history.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : checks.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-4xl mb-4">📋</p>
             <p className="text-dark font-bold mb-1">История пуста</p>
@@ -167,7 +156,7 @@ export default function History() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {history.map((entry) => (
+            {checks.map((entry) => (
               <Card key={entry.id} entry={entry} onOutcome={setOutcome} />
             ))}
           </div>

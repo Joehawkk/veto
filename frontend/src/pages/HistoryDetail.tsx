@@ -1,12 +1,12 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { type HistoryEntry } from '../lib/storage'
-import { getVerdictMeta } from '../lib/scoring'
-import { useHistory } from '../hooks/useHistory'
+import { type CheckEntry } from '../api/client'
+import { getVerdictMeta, type Verdict } from '../lib/scoring'
+import { useChecks } from '../hooks/useChecks'
 
 const OUTCOME = {
-  stopped: { label: 'Отказался',        icon: '💚', color: 'text-primary' },
-  bought:  { label: 'Купил',             icon: '🛒', color: 'text-gray-dark' },
-  pending: { label: 'Ожидает решения',  icon: '⏳', color: 'text-[#F86D06]' },
+  stopped: { label: 'Отказался',       icon: '💚', color: 'text-primary' },
+  bought:  { label: 'Купил',            icon: '🛒', color: 'text-gray-dark' },
+  pending: { label: 'Ожидает решения', icon: '⏳', color: 'text-[#F86D06]' },
 }
 
 const MOOD_RU: Record<string, string> = {
@@ -45,8 +45,8 @@ function verdictGradient(v: string) {
 export default function HistoryDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { history, setOutcome } = useHistory()
-  const entry = history.find((e) => e.id === id) as HistoryEntry | undefined
+  const { checks, setOutcome } = useChecks()
+  const entry = checks.find((e) => e.id === id) as CheckEntry | undefined
 
   if (!entry) {
     return (
@@ -58,19 +58,18 @@ export default function HistoryDetail() {
     )
   }
 
-  const v = getVerdictMeta(entry.aiVerdict)
+  const v = getVerdictMeta(entry.ai_verdict as Verdict)
   const o = OUTCOME[entry.outcome]
   const isPending = entry.outcome === 'pending'
-  const hasTimer = isPending && !!entry.timerDeadline
-  const expired = hasTimer && new Date(entry.timerDeadline!).getTime() < Date.now()
+  const hasTimer = isPending && !!entry.timer_deadline
+  const expired = hasTimer && new Date(entry.timer_deadline!).getTime() < Date.now()
 
-  const date = new Date(entry.createdAt).toLocaleDateString('ru', {
+  const date = new Date(entry.created_at).toLocaleDateString('ru', {
     day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
 
-  const entryId = entry.id
   function handleMark(outcome: 'stopped' | 'bought') {
-    setOutcome(entryId, outcome)
+    setOutcome(entry!.id, outcome)
     navigate('/history')
   }
 
@@ -86,14 +85,13 @@ export default function HistoryDetail() {
 
       <main className="px-6 py-6 max-w-md mx-auto flex flex-col gap-4">
 
-        {/* Price + verdict hero */}
         <div className="rounded-2xl overflow-hidden shadow-card">
-          <div className="px-5 py-6" style={{ background: verdictGradient(entry.aiVerdict) }}>
+          <div className="px-5 py-6" style={{ background: verdictGradient(entry.ai_verdict) }}>
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-black px-3 py-1.5 rounded-full uppercase tracking-wide bg-white/25 text-white">
                 {v.icon} {v.label}
               </span>
-              {entry.hasDiscount && (
+              {entry.has_discount && (
                 <span className="text-xs font-bold text-white bg-white/20 px-2.5 py-1 rounded-full">
                   🏷️ Скидка
                 </span>
@@ -104,7 +102,6 @@ export default function HistoryDetail() {
           </div>
         </div>
 
-        {/* Outcome */}
         <div className="bg-white border border-border rounded-2xl px-5 py-4 flex items-center gap-3 shadow-card">
           <span className="text-2xl">{o.icon}</span>
           <div>
@@ -113,7 +110,6 @@ export default function HistoryDetail() {
           </div>
         </div>
 
-        {/* Timer */}
         {hasTimer && (
           <div className={`rounded-2xl px-5 py-4 flex items-center gap-3 ${
             expired
@@ -126,14 +122,13 @@ export default function HistoryDetail() {
                 Таймер на решение
               </p>
               <p className={`text-sm font-bold ${expired ? 'text-secondary' : 'text-[#F86D06]'}`}>
-                {expired ? '⚠️ Время вышло — пора решить!' : getTimeLeft(entry.timerDeadline!)}
+                {expired ? '⚠️ Время вышло — пора решить!' : getTimeLeft(entry.timer_deadline!)}
               </p>
             </div>
           </div>
         )}
 
-        {/* AI Comment */}
-        {entry.aiComment && (
+        {entry.ai_comment && (
           <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
             <div className="flex gap-3 items-start">
               <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #FD7203, #F86D06)' }}>
@@ -141,43 +136,43 @@ export default function HistoryDetail() {
               </div>
               <div>
                 <p className="text-muted text-[10px] font-bold uppercase tracking-widest mb-1.5">AI вердикт</p>
-                <p className="text-gray-dark text-sm leading-relaxed">{entry.aiComment}</p>
+                <p className="text-gray-dark text-sm leading-relaxed">{entry.ai_comment}</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Answers */}
-        <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
-          <p className="text-muted text-xs uppercase tracking-wide font-bold mb-4">Ответы на вопросы</p>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="text-muted text-sm">Нужно прямо сейчас?</p>
-              <span className={`text-sm font-bold ${entry.answers.needNow ? 'text-secondary' : 'text-primary'}`}>
-                {entry.answers.needNow ? '✅ Да' : '❌ Нет'}
-              </span>
-            </div>
-            <div className="h-px bg-border" />
-            <div className="flex items-center justify-between">
-              <p className="text-muted text-sm">Есть похожее?</p>
-              <span className={`text-sm font-bold ${entry.answers.hasSimilar ? 'text-secondary' : 'text-primary'}`}>
-                {entry.answers.hasSimilar ? '✅ Да' : '❌ Нет'}
-              </span>
-            </div>
-            <div className="h-px bg-border" />
-            <div className="flex items-center justify-between">
-              <p className="text-muted text-sm">Как долго думал?</p>
-              <span className="text-sm font-bold text-dark">{DURATION_RU[entry.answers.thoughtDuration]}</span>
-            </div>
-            <div className="h-px bg-border" />
-            <div className="flex items-center justify-between">
-              <p className="text-muted text-sm">Настроение</p>
-              <span className="text-sm font-bold text-dark">{MOOD_RU[entry.answers.mood]}</span>
+        {entry.answers && (
+          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+            <p className="text-muted text-xs uppercase tracking-wide font-bold mb-4">Ответы на вопросы</p>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <p className="text-muted text-sm">Нужно прямо сейчас?</p>
+                <span className={`text-sm font-bold ${entry.answers.needNow ? 'text-secondary' : 'text-primary'}`}>
+                  {entry.answers.needNow ? '✅ Да' : '❌ Нет'}
+                </span>
+              </div>
+              <div className="h-px bg-border" />
+              <div className="flex items-center justify-between">
+                <p className="text-muted text-sm">Есть похожее?</p>
+                <span className={`text-sm font-bold ${entry.answers.hasSimilar ? 'text-secondary' : 'text-primary'}`}>
+                  {entry.answers.hasSimilar ? '✅ Да' : '❌ Нет'}
+                </span>
+              </div>
+              <div className="h-px bg-border" />
+              <div className="flex items-center justify-between">
+                <p className="text-muted text-sm">Как долго думал?</p>
+                <span className="text-sm font-bold text-dark">{DURATION_RU[entry.answers.thoughtDuration] ?? entry.answers.thoughtDuration}</span>
+              </div>
+              <div className="h-px bg-border" />
+              <div className="flex items-center justify-between">
+                <p className="text-muted text-sm">Настроение</p>
+                <span className="text-sm font-bold text-dark">{MOOD_RU[entry.answers.mood] ?? entry.answers.mood}</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Mark buttons for pending */}
         {isPending && (
           <div className="flex gap-2">
             <button

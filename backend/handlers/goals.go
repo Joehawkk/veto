@@ -10,10 +10,10 @@ type goalInput struct {
 }
 
 func (h *Handler) GetGoals(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(int)
+	userID := c.Locals("user_id").(string)
 
 	rows, err := h.db.Query(
-		`SELECT id, user_id, title, target_amount, current_amount, status, created_at
+		`SELECT id, title, target_amount, current_amount, status, created_at
 		 FROM goals WHERE user_id = $1 ORDER BY created_at DESC`,
 		userID,
 	)
@@ -24,14 +24,14 @@ func (h *Handler) GetGoals(c *fiber.Ctx) error {
 
 	goals := make([]fiber.Map, 0)
 	for rows.Next() {
-		var id, userID int
+		var id int64
 		var title, status, createdAt string
 		var targetAmount, currentAmount float64
-		if err := rows.Scan(&id, &userID, &title, &targetAmount, &currentAmount, &status, &createdAt); err != nil {
+		if err := rows.Scan(&id, &title, &targetAmount, &currentAmount, &status, &createdAt); err != nil {
 			continue
 		}
 		goals = append(goals, fiber.Map{
-			"id": id, "user_id": userID, "title": title,
+			"id": id, "title": title,
 			"target_amount": targetAmount, "current_amount": currentAmount,
 			"status": status, "created_at": createdAt,
 		})
@@ -41,17 +41,16 @@ func (h *Handler) GetGoals(c *fiber.Ctx) error {
 }
 
 func (h *Handler) CreateGoal(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(int)
+	userID := c.Locals("user_id").(string)
 
 	var input goalInput
 	if err := c.BodyParser(&input); err != nil || input.Title == "" || input.TargetAmount <= 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "title and target_amount are required"})
 	}
 
-	// Deactivate existing active goals
 	h.db.Exec(`UPDATE goals SET status = 'inactive' WHERE user_id = $1 AND status = 'active'`, userID)
 
-	var goalID int
+	var goalID int64
 	err := h.db.QueryRow(
 		`INSERT INTO goals (user_id, title, target_amount) VALUES ($1, $2, $3) RETURNING id`,
 		userID, input.Title, input.TargetAmount,
@@ -68,7 +67,7 @@ func (h *Handler) CreateGoal(c *fiber.Ctx) error {
 }
 
 func (h *Handler) UpdateGoal(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(int)
+	userID := c.Locals("user_id").(string)
 	goalID := c.Params("id")
 
 	var input goalInput

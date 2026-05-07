@@ -89,6 +89,11 @@ func main() {
 	p.Get("/notifications", h.GetNotifications)
 	p.Post("/notifications/read", h.MarkNotificationsRead)
 
+	// Checks (purchase history)
+	p.Post("/checks", h.CreateCheck)
+	p.Get("/checks", h.ListChecks)
+	p.Patch("/checks/:id", h.UpdateCheck)
+
 	// Users list
 	p.Get("/users", h.ListUsers)
 

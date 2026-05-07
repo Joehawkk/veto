@@ -3,15 +3,14 @@ package db
 import (
 	"database/sql"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/lib/pq"
 )
 
-func Connect(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", path)
+func Connect(databaseURL string) (*sql.DB, error) {
+	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(1) // SQLite supports single writer
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
