@@ -25,7 +25,7 @@ func Load() *Config {
 		AnthropicAPIKey:  getEnv("ANTHROPIC_API_KEY", ""),
 		AnthropicModel:   getEnv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
-		OpenRouterModel:  getEnv("OPENROUTER_MODEL", "anthropic/claude-haiku-4-5"),
+		OpenRouterModel:  getEnv("OPENROUTER_MODEL", "openai/gpt-oss-20b:free"),
 	}
 }
 

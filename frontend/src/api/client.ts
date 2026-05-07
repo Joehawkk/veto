@@ -49,6 +49,8 @@ export interface FeedItem {
   has_respected: boolean
   like_count?: number
   has_liked?: boolean
+  flame_count?: number
+  has_flamed?: boolean
 }
 
 export interface GroupGoal {
@@ -204,8 +206,10 @@ export const api = {
     decline: (id: number) => client.post(`/invites/${id}/decline`),
   },
   checkLikes: {
-    like: (checkId: string) => client.post(`/checks/${checkId}/like`),
-    unlike: (checkId: string) => client.delete(`/checks/${checkId}/like`),
+    like: (checkId: string, reaction: 'heart' | 'flame' = 'heart') =>
+      client.post(`/checks/${checkId}/like?reaction=${reaction}`),
+    unlike: (checkId: string, reaction: 'heart' | 'flame' = 'heart') =>
+      client.delete(`/checks/${checkId}/like?reaction=${reaction}`),
   },
   users: {
     list: () => client.get<AccountUser[]>('/users'),
