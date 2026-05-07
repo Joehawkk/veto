@@ -200,14 +200,38 @@ func buildFallbackAIResponse(input aiCheckRequest) aiCheckResponse {
 		reasons = append(reasons, "по твоим ответам решение выглядит достаточно обдуманным")
 	}
 
+	h := 0
+	for _, c := range input.Name {
+		h = h*31 + int(c)
+	}
+	h += int(input.Price)
+	if h < 0 {
+		h = -h
+	}
+
 	var nextStep string
 	switch verdict {
 	case "go":
-		nextStep = "Если берёшь, проверь итоговую цену и убедись, что вещь реально нужна прямо сейчас."
+		steps := []string{
+			fmt.Sprintf("Проверь финальную цену и убедись, что %.0f ₽ вписываются в бюджет.", input.Price),
+			"Если уверен — действуй, ты достаточно подумал.",
+			fmt.Sprintf("%.0f ₽ — сумма обдуманная, покупай без лишних сомнений.", input.Price),
+		}
+		nextStep = steps[h%len(steps)]
 	case "wait":
-		nextStep = "Дай себе хотя бы сутки и проверь, останется ли желание таким же сильным завтра."
+		steps := []string{
+			fmt.Sprintf("Дай себе хотя бы день — если через 24 часа желание останется, %.0f ₽ того стоят.", input.Price),
+			"Подожди до завтра и посмотри, будет ли желание таким же сильным.",
+			fmt.Sprintf("Отложи решение на сутки: %.0f ₽ никуда не денутся, а импульс может пройти.", input.Price),
+		}
+		nextStep = steps[h%len(steps)]
 	default:
-		nextStep = "Сейчас разумнее отказаться и сохранить деньги на более важную цель или действительно нужную покупку."
+		steps := []string{
+			fmt.Sprintf("Сохрани %.0f ₽ — это реальный вклад в то, что важнее.", input.Price),
+			"Откажись сейчас и поблагодаришь себя позже.",
+			fmt.Sprintf("%.0f ₽ лучше отложить на действительно нужную покупку.", input.Price),
+		}
+		nextStep = steps[h%len(steps)]
 	}
 
 	return aiCheckResponse{
@@ -433,13 +457,35 @@ func deriveAIVerdict(input aiCheckRequest) string {
 }
 
 func buildVerdictLead(verdict, name string) string {
+	h := 0
+	for _, c := range name {
+		h = h*31 + int(c)
+	}
+	if h < 0 {
+		h = -h
+	}
 	switch verdict {
 	case "go":
-		return fmt.Sprintf("Похоже, покупка «%s» сейчас выглядит оправданной.", name)
+		leads := []string{
+			fmt.Sprintf("«%s» — покупка выглядит оправданной.", name),
+			fmt.Sprintf("Похоже, «%s» тебе действительно нужны.", name),
+			fmt.Sprintf("Берёшь «%s» — выглядит как осознанное решение.", name),
+		}
+		return leads[h%len(leads)]
 	case "wait":
-		return fmt.Sprintf("С покупкой «%s» лучше немного притормозить.", name)
+		leads := []string{
+			fmt.Sprintf("С «%s» лучше не спешить.", name),
+			fmt.Sprintf("«%s» — стоит взять паузу перед покупкой.", name),
+			fmt.Sprintf("Не факт, что «%s» нужны прямо сейчас.", name),
+		}
+		return leads[h%len(leads)]
 	default:
-		return fmt.Sprintf("Покупку «%s» лучше пропустить.", name)
+		leads := []string{
+			fmt.Sprintf("«%s» — лучше отложить эту покупку.", name),
+			fmt.Sprintf("Сейчас не лучший момент для «%s».", name),
+			fmt.Sprintf("«%s» выглядит как импульсивное решение — лучше пропустить.", name),
+		}
+		return leads[h%len(leads)]
 	}
 }
 
