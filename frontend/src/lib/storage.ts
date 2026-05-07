@@ -3,7 +3,7 @@ import { type Verdict } from './scoring'
 export interface Profile {
   goal: string
   monthlySpend: number
-  spendingTrigger?: string
+  spendingTriggers?: string[]
   interests: string[]
   savingsTarget?: number
   savingsMonths?: number

@@ -10,6 +10,8 @@ type Config struct {
 	DatabaseURL      string
 	JWTSecret        string
 	Port             string
+	AnthropicAPIKey  string
+	AnthropicModel   string
 	OpenRouterAPIKey string
 	OpenRouterModel  string
 }
@@ -20,6 +22,8 @@ func Load() *Config {
 		DatabaseURL:      getEnv("DATABASE_URL", "postgres://veto:veto@localhost:5432/veto?sslmode=disable"),
 		JWTSecret:        getEnv("JWT_SECRET", "dev-secret-key-change-in-production"),
 		Port:             getEnv("PORT", "8080"),
+		AnthropicAPIKey:  getEnv("ANTHROPIC_API_KEY", ""),
+		AnthropicModel:   getEnv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
 		OpenRouterModel:  getEnv("OPENROUTER_MODEL", "anthropic/claude-haiku-4-5"),
 	}

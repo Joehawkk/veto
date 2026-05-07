@@ -110,6 +110,7 @@ export interface CheckEntry {
   }
   ai_verdict: string
   ai_comment: string
+  ai_source: string
   outcome: 'stopped' | 'bought' | 'pending'
   timer_deadline: string | null
   created_at: string
@@ -191,7 +192,7 @@ export const api = {
     list: () => client.get<CheckEntry[]>('/checks'),
     create: (data: {
       name: string; price: number; has_discount: boolean
-      answers: object; ai_verdict: string; ai_comment: string
+      answers: object; ai_verdict: string; ai_comment: string; ai_source?: string
       outcome?: string; timer_deadline?: string | null
     }) => client.post<{ id: string }>('/checks', data),
     update: (id: string, data: { outcome?: string; timer_deadline?: string | null }) =>

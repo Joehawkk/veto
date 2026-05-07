@@ -89,6 +89,7 @@ func Migrate(db *sql.DB) error {
 			UNIQUE(group_id, invited_user_id)
 		)`,
 		`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_id BIGINT`,
+		`ALTER TABLE checks ADD COLUMN IF NOT EXISTS ai_source TEXT NOT NULL DEFAULT 'unknown'`,
 	}
 	for _, s := range stmts {
 		if _, err := db.Exec(s); err != nil {

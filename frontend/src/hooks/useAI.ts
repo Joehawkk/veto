@@ -5,7 +5,8 @@ import { type Profile, type CheckAnswers, type HistoryEntry } from '../lib/stora
 export interface AIResult {
   verdict: Verdict
   tip: string
-  hobbyTip: string
+  suggestion: string
+  source?: string
 }
 
 export function useAI() {
@@ -22,7 +23,7 @@ export function useAI() {
       const fallback: AIResult = {
         verdict: params.localVerdict,
         tip: 'AI временно недоступен. Вердикт рассчитан на основе твоих ответов.',
-        hobbyTip: '',
+        suggestion: '',
       }
 
       try {
@@ -41,7 +42,8 @@ export function useAI() {
         return {
           verdict: data.verdict as Verdict,
           tip: data.tip.trim(),
-          hobbyTip: typeof data.hobby_tip === 'string' ? data.hobby_tip.trim() : '',
+          suggestion: typeof data.suggestion === 'string' ? data.suggestion.trim() : '',
+          source: typeof data.source === 'string' ? data.source : 'unknown',
         }
       } catch {
         return fallback
