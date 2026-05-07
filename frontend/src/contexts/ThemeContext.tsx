@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useState } from 'react'
 
 type Theme = 'light' | 'dark'
 
@@ -9,23 +9,29 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue>({ theme: 'light', toggleTheme: () => {} })
 
+function applyTheme(t: Theme) {
+  if (t === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+  localStorage.setItem('veto_theme', t)
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    return (localStorage.getItem('veto_theme') as Theme) ?? 'light'
+    const saved = (localStorage.getItem('veto_theme') as Theme) ?? 'light'
+    // Apply synchronously during init — no flash
+    applyTheme(saved)
+    return saved
   })
 
-  useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark') {
-      root.classList.add('dark')
-    } else {
-      root.classList.remove('dark')
-    }
-    localStorage.setItem('veto_theme', theme)
-  }, [theme])
-
   function toggleTheme() {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'))
+    setTheme((t) => {
+      const next: Theme = t === 'light' ? 'dark' : 'light'
+      applyTheme(next)
+      return next
+    })
   }
 
   return (
