@@ -90,6 +90,17 @@ func Migrate(db *sql.DB) error {
 		)`,
 		`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_id BIGINT`,
 		`ALTER TABLE checks ADD COLUMN IF NOT EXISTS ai_source TEXT NOT NULL DEFAULT 'unknown'`,
+		`CREATE TABLE IF NOT EXISTS group_goals (
+    id             BIGSERIAL PRIMARY KEY,
+    group_id       BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    title          TEXT NOT NULL,
+    target_amount  NUMERIC(12,2) NOT NULL,
+    current_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+    status         TEXT NOT NULL DEFAULT 'active',
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+)`,
+		`ALTER TABLE group_members ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member'`,
+		`UPDATE group_members gm SET role = 'owner' FROM groups g WHERE g.id = gm.group_id AND g.owner_id = gm.user_id AND gm.role = 'member'`,
 	}
 	for _, s := range stmts {
 		if _, err := db.Exec(s); err != nil {

@@ -236,6 +236,13 @@ export default function ProfilePage() {
         {/* Account actions */}
         <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
           <h3 className="font-bold text-dark text-sm mb-3">Настройки аккаунта</h3>
+          <Link
+            to="/settings"
+            className="w-full text-left text-dark hover:text-primary text-sm py-2.5 transition-colors border-b border-border flex items-center justify-between"
+          >
+            <span>Предпочтения и тёмная тема</span>
+            <span className="text-muted text-xs">→</span>
+          </Link>
           <button
             onClick={handleLogout}
             className="w-full text-left text-muted hover:text-dark text-sm py-2.5 transition-colors border-b border-border"
