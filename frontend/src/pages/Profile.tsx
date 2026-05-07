@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react'
+﻿import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api, type Profile, type Goal } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
@@ -93,14 +93,14 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <header className="px-6 py-5 bg-white border-b border-border">
+      <header className="px-6 py-5 bg-card border-b border-border">
         <h1 className="text-xl font-black text-dark">Профиль</h1>
       </header>
 
       <main className="px-6 py-6 pb-24 max-w-lg mx-auto flex flex-col gap-5">
 
         {/* User card */}
-        <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+        <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-black text-xl shrink-0 overflow-hidden">
               {profile?.avatar_url ? (
@@ -143,7 +143,7 @@ export default function ProfilePage() {
 
         {/* Completed goals */}
         {completedGoals.length > 0 && (
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
             <h2 className="font-bold text-dark mb-4 flex items-center gap-2">
               <span className="text-primary"><TrophyIcon size={16} /></span> Выполненные цели
             </h2>
@@ -159,7 +159,7 @@ export default function ProfilePage() {
         )}
 
         {/* Goal section */}
-        <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+        <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
           <h2 className="font-black text-dark mb-1">
             {profile?.active_goal ? 'Активная цель' : 'Цель накоплений'}
           </h2>
@@ -234,7 +234,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Account actions */}
-        <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+        <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
           <h3 className="font-bold text-dark text-sm mb-3">Настройки аккаунта</h3>
           <Link
             to="/settings"

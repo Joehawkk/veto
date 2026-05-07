@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { type Profile } from '../lib/storage'
@@ -107,7 +107,7 @@ export default function Onboarding() {
   const back = (to: number) => (
     <button
       onClick={() => setStep(to)}
-      className="flex-1 border border-border bg-white text-gray-dark py-4 rounded-xl font-medium hover:border-border-dark transition-colors shadow-card"
+      className="flex-1 border border-border bg-card text-gray-dark py-4 rounded-xl font-medium hover:border-border-dark transition-colors shadow-card"
     >
       ← Назад
     </button>
@@ -135,7 +135,7 @@ export default function Onboarding() {
                     className={`flex items-center gap-4 px-5 py-4 rounded-2xl border text-left transition-all shadow-card ${
                       selected
                         ? 'border-primary bg-primary/10 text-dark'
-                        : 'border-border bg-white text-gray-dark hover:border-primary/40'
+                        : 'border-border bg-card text-gray-dark hover:border-primary/40'
                     }`}
                   >
                     <span className="shrink-0 text-primary"><g.Icon size={22} /></span>
@@ -171,7 +171,7 @@ export default function Onboarding() {
                     className={`flex items-center gap-4 px-5 py-4 rounded-2xl border text-left transition-all shadow-card ${
                       selected
                         ? 'border-primary bg-primary/10 text-dark'
-                        : 'border-border bg-white text-gray-dark hover:border-primary/40'
+                        : 'border-border bg-card text-gray-dark hover:border-primary/40'
                     }`}
                   >
                     <span className="shrink-0 text-primary"><t.Icon size={22} /></span>
@@ -213,8 +213,8 @@ export default function Onboarding() {
                       selected
                         ? 'border-primary bg-primary/10 text-dark'
                         : disabled
-                        ? 'border-border bg-white text-muted opacity-40 cursor-not-allowed'
-                        : 'border-border bg-white text-gray-dark hover:border-primary/40'
+                        ? 'border-border bg-card text-muted opacity-40 cursor-not-allowed'
+                        : 'border-border bg-card text-gray-dark hover:border-primary/40'
                     }`}
                   >
                     <span className="text-primary"><i.Icon size={20} /></span>
@@ -241,7 +241,7 @@ export default function Onboarding() {
           <div>
             <h2 className="text-2xl font-black text-dark mb-1">Сколько уходит спонтанно?</h2>
             <p className="text-muted text-sm mb-8">В месяц, примерно</p>
-            <div className="bg-white border border-border rounded-2xl p-6 text-center mb-6 shadow-card">
+            <div className="bg-card border border-border rounded-2xl p-6 text-center mb-6 shadow-card">
               <p className="text-primary font-black text-5xl">{monthlySpend.toLocaleString('ru')}</p>
               <p className="text-muted text-sm mt-2 font-medium">₽ в месяц</p>
             </div>
@@ -274,7 +274,7 @@ export default function Onboarding() {
                 <input
                   type="number" value={savingsTarget} onChange={(e) => setSavingsTarget(e.target.value)}
                   placeholder="например, 50 000" min={1}
-                  className="w-full bg-white border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-card"
+                  className="w-full bg-card border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-card"
                 />
               </div>
               <div>
@@ -282,7 +282,7 @@ export default function Onboarding() {
                 <input
                   type="number" value={savingsMonths} onChange={(e) => setSavingsMonths(e.target.value)}
                   placeholder="например, 4" min={1} max={60}
-                  className="w-full bg-white border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-card"
+                  className="w-full bg-card border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-card"
                 />
               </div>
             </div>

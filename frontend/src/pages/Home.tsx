@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+﻿import { useState, type FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { setCurrent } from '../lib/storage'
 import { useChecks } from '../hooks/useChecks'
@@ -32,7 +32,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-bg flex flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-5 bg-white border-b border-border">
+      <header className="flex items-center justify-between px-6 py-5 bg-card border-b border-border">
         <div>
           <span className="text-primary font-black text-2xl tracking-widest">VETO</span>
           <p className="text-muted text-xs mt-0.5">осознанные покупки</p>
@@ -55,7 +55,7 @@ export default function Home() {
 
         {/* Savings stats */}
         {hasSaved && (
-          <div className="w-full bg-white border border-border rounded-2xl p-4 shadow-card">
+          <div className="w-full bg-card border border-border rounded-2xl p-4 shadow-card">
             <p className="text-muted text-xs uppercase tracking-wider font-semibold mb-2">Твой прогресс</p>
             <div className="flex items-end justify-between">
               <div>
@@ -129,7 +129,7 @@ export default function Home() {
                 <input
                   type="text" value={name} onChange={(e) => setName(e.target.value)}
                   placeholder="AirPods, кроссовки, курс..." required autoFocus
-                  className="w-full bg-white border border-border rounded-xl px-4 py-4 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-base shadow-card"
+                  className="w-full bg-card border border-border rounded-xl px-4 py-4 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-base shadow-card"
                 />
               </div>
               <div>
@@ -141,7 +141,7 @@ export default function Home() {
                       setPrice(digits)
                     }}
                     placeholder="0 ₽" required
-                    className="w-full bg-white border border-border rounded-xl pl-4 pr-12 py-4 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-base shadow-card"
+                    className="w-full bg-card border border-border rounded-xl pl-4 pr-12 py-4 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-base shadow-card"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted font-bold">₽</span>
                 </div>
@@ -154,7 +154,7 @@ export default function Home() {
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left shadow-card ${
                   hasDiscount
                     ? 'border-[#FF9E30] bg-[#FFDE8A]/30 text-dark'
-                    : 'border-border bg-white text-muted hover:text-dark'
+                    : 'border-border bg-card text-muted hover:text-dark'
                 }`}
               >
                 <span className="text-[#F86D06]"><TagIcon size={18} /></span>
@@ -165,7 +165,7 @@ export default function Home() {
                   </p>
                 </div>
                 <div className={`w-10 h-6 rounded-full transition-all flex items-center px-1 ${hasDiscount ? 'bg-primary' : 'bg-gray-300'}`}>
-                  <div className={`w-4 h-4 rounded-full bg-white transition-all shadow-sm ${hasDiscount ? 'translate-x-4' : 'translate-x-0'}`} />
+                  <div className={`w-4 h-4 rounded-full bg-card transition-all shadow-sm ${hasDiscount ? 'translate-x-4' : 'translate-x-0'}`} />
                 </div>
               </button>
 

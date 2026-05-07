@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+﻿import { Link } from 'react-router-dom'
 import { ZapIcon, FlameIcon, TargetIcon } from '../components/Icons'
 
 const features = [
@@ -69,7 +69,7 @@ export default function Landing() {
 
       {/* Mock UI */}
       <section className="px-6 pb-20 flex justify-center">
-        <div className="bg-white border border-border rounded-3xl p-6 w-full max-w-xs text-left shadow-card">
+        <div className="bg-card border border-border rounded-3xl p-6 w-full max-w-xs text-left shadow-card">
           <p className="text-muted text-xs mb-3 uppercase tracking-widest">Цель: Новый iPhone</p>
           <div className="flex justify-between items-end mb-2">
             <span className="text-dark font-bold">18 500 ₽</span>
@@ -89,7 +89,7 @@ export default function Landing() {
       <section className="px-6 pb-24 max-w-4xl mx-auto">
         <div className="grid md:grid-cols-3 gap-4">
           {features.map((f) => (
-            <div key={f.title} className="bg-white border border-border rounded-2xl p-6 shadow-card">
+            <div key={f.title} className="bg-card border border-border rounded-2xl p-6 shadow-card">
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${f.color}`}>
                 {f.icon}
               </div>

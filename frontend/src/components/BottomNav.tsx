@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom'
+﻿import { Link, useLocation } from 'react-router-dom'
 
 const tabs = [
   {
@@ -58,7 +58,7 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-border flex">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex">
       {tabs.map((tab) => {
         const active = isActive(tab.to, tab.exact)
         return (

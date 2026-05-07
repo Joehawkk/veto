@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react'
+﻿import { useState, useEffect, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Group, type Notification } from '../api/client'
 import BottomNav from '../components/BottomNav'
@@ -85,7 +85,7 @@ export default function Groups() {
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
-      <header className="flex items-center justify-between px-6 py-5 bg-white border-b border-border">
+      <header className="flex items-center justify-between px-6 py-5 bg-card border-b border-border">
         <div>
           <span className="text-primary font-black text-2xl tracking-widest">VETO</span>
           <p className="text-muted text-xs mt-0.5">группы</p>
@@ -105,7 +105,7 @@ export default function Groups() {
 
       {/* Notifications panel */}
       {showNotifs && (
-        <div className="bg-white border-b border-border px-6 py-4 max-w-md mx-auto w-full">
+        <div className="bg-card border-b border-border px-6 py-4 max-w-md mx-auto w-full">
           <div className="flex items-center justify-between mb-3">
             <p className="font-black text-dark text-sm">Уведомления</p>
             <button onClick={() => setShowNotifs(false)} className="text-muted text-sm hover:text-dark">✕</button>
@@ -171,7 +171,7 @@ export default function Groups() {
 
         {/* Create form */}
         {showCreate && (
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
             {createdCode ? (
               <div className="text-center">
                 <p className="text-dark font-bold mb-1">Группа создана!</p>
@@ -207,7 +207,7 @@ export default function Groups() {
 
         {/* Join form */}
         {showJoin && (
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
             <form onSubmit={handleJoin} className="flex gap-3">
               <input
                 type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value)}
@@ -247,7 +247,7 @@ export default function Groups() {
             <Link
               key={g.id}
               to={`/groups/${g.id}`}
-              className="bg-white border border-border rounded-2xl p-5 shadow-card hover:border-primary/40 transition-colors"
+              className="bg-card border border-border rounded-2xl p-5 shadow-card hover:border-primary/40 transition-colors"
             >
               <div className="flex items-start justify-between">
                 <div>

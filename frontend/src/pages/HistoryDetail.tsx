@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from 'react-router-dom'
+﻿import { useParams, Link, useNavigate } from 'react-router-dom'
 import { type CheckEntry } from '../api/client'
 import { type Verdict } from '../lib/scoring'
 import { useChecks } from '../hooks/useChecks'
@@ -76,7 +76,7 @@ export default function HistoryDetail() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <header className="flex items-center gap-4 px-6 py-5 bg-white border-b border-border">
+      <header className="flex items-center gap-4 px-6 py-5 bg-card border-b border-border">
         <Link to="/history" className="text-muted hover:text-dark transition-colors text-lg">←</Link>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-black text-dark truncate">{entry.name}</h1>
@@ -91,7 +91,7 @@ export default function HistoryDetail() {
             <div className="flex items-center justify-between mb-3">
               <VerdictBadge verdict={entry.ai_verdict as Verdict} size="lg" ghost />
               {entry.has_discount && (
-                <span className="text-xs font-bold text-white bg-white/20 px-2.5 py-1 rounded-full flex items-center gap-1">
+                <span className="text-xs font-bold text-white bg-card/20 px-2.5 py-1 rounded-full flex items-center gap-1">
                   <TagIcon size={12} /> Скидка
                 </span>
               )}
@@ -101,7 +101,7 @@ export default function HistoryDetail() {
           </div>
         </div>
 
-        <div className="bg-white border border-border rounded-2xl px-5 py-4 flex items-center gap-3 shadow-card">
+        <div className="bg-card border border-border rounded-2xl px-5 py-4 flex items-center gap-3 shadow-card">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center ${entry.outcome === 'stopped' ? 'bg-primary/10 text-primary' : entry.outcome === 'bought' ? 'bg-gray-100 text-gray-500' : 'bg-[#FFDE8A]/40 text-[#F86D06]'}`}>
             {entry.outcome === 'stopped' && <HeartIcon size={18} filled />}
             {entry.outcome === 'bought' && <CartIcon size={18} />}
@@ -134,7 +134,7 @@ export default function HistoryDetail() {
         )}
 
         {entry.ai_comment && (
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
             <div className="flex gap-3 items-start">
               <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg, #FD7203, #F86D06)' }}>
                 <BotIcon size={16} />
@@ -159,7 +159,7 @@ export default function HistoryDetail() {
         )}
 
         {entry.answers && (
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
             <p className="text-muted text-xs uppercase tracking-wide font-bold mb-4">Ответы на вопросы</p>
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
