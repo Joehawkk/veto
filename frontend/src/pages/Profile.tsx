@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { api, type Profile, type Goal } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
 import { useChecks } from '../hooks/useChecks'
@@ -14,13 +14,7 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
-  // Edit fields
-  const [editMode, setEditMode] = useState(false)
-  const [editName, setEditName] = useState('')
-  const [editEmail, setEditEmail] = useState('')
-  const [editLoading, setEditLoading] = useState(false)
-  const [editError, setEditError] = useState('')
-  const [editSuccess, setEditSuccess] = useState(false)
+  const [editSuccess] = useState(false)
 
   // Goal fields
   const [goalTitle, setGoalTitle] = useState('')
@@ -33,8 +27,6 @@ export default function ProfilePage() {
     try {
       const { data } = await api.profile.get()
       setProfile(data)
-      setEditName(data.display_name)
-      setEditEmail(data.email ?? '')
       if (data.active_goal) {
         setGoalTitle(data.active_goal.title)
         setGoalAmount(String(data.active_goal.target_amount))
@@ -45,28 +37,6 @@ export default function ProfilePage() {
   }
 
   useEffect(() => { loadProfile() }, [])
-
-  async function handleEditSubmit(e: FormEvent) {
-    e.preventDefault()
-    setEditLoading(true)
-    setEditError('')
-    setEditSuccess(false)
-    try {
-      await api.me.update({
-        display_name: editName,
-        email: editEmail || null,
-      })
-      setEditSuccess(true)
-      setEditMode(false)
-      loadProfile()
-      setTimeout(() => setEditSuccess(false), 3000)
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-      setEditError(msg || 'Не удалось сохранить изменения')
-    } finally {
-      setEditLoading(false)
-    }
-  }
 
   async function handleGoalSubmit(e: FormEvent) {
     e.preventDefault()
@@ -139,12 +109,12 @@ export default function ProfilePage() {
               <p className="text-muted text-sm truncate">@{profile?.username}</p>
               {profile?.email && <p className="text-muted text-xs truncate">{profile.email}</p>}
             </div>
-            <button
-              onClick={() => { setEditMode(!editMode); setEditError('') }}
+            <Link
+              to="/profile/edit"
               className="shrink-0 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
             >
-              {editMode ? 'Отмена' : 'Изменить'}
-            </button>
+              Изменить
+            </Link>
           </div>
 
           {/* Stats */}
@@ -160,51 +130,9 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Edit form */}
-        {editMode && (
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
-            <h2 className="font-black text-dark mb-4">Редактировать аккаунт</h2>
-
-            {editSuccess && (
-              <div className="bg-primary/10 border border-primary/30 text-primary text-sm rounded-xl px-4 py-3 mb-4">
-                Изменения сохранены!
-              </div>
-            )}
-            {editError && (
-              <div className="bg-secondary/10 border border-secondary/30 text-secondary text-sm rounded-xl px-4 py-3 mb-4">
-                {editError}
-              </div>
-            )}
-
-            <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
-              <div>
-                <label className="text-muted text-xs font-semibold block mb-1.5 uppercase tracking-wide">Имя</label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  required
-                  className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-              <div>
-                <label className="text-muted text-xs font-semibold block mb-1.5 uppercase tracking-wide">Email</label>
-                <input
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  placeholder="не указан"
-                  className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={editLoading}
-                className="w-full bg-primary text-white font-black py-3 rounded-xl shadow-orange hover:shadow-orange-lg active:scale-[0.98] transition-all disabled:opacity-60"
-              >
-                {editLoading ? 'Сохраняем...' : 'Сохранить'}
-              </button>
-            </form>
+        {editSuccess && (
+          <div className="bg-primary/10 border border-primary/30 text-primary text-sm rounded-xl px-4 py-3">
+            Изменения сохранены!
           </div>
         )}
 

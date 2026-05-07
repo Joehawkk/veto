@@ -38,7 +38,7 @@ export default function Feed() {
       ),
     )
     try {
-      await api.respects.create(item.id)
+      await api.respects.create(Number(item.id))
     } catch {
       setItems((prev) =>
         prev.map((i) =>

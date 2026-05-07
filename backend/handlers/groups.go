@@ -96,6 +96,70 @@ func (h *Handler) CreateGroup(c *fiber.Ctx) error {
 	})
 }
 
+func (h *Handler) InviteToGroup(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(string)
+	groupID := c.Params("id")
+
+	var memberCheck int
+	h.db.QueryRow(
+		`SELECT COUNT(*) FROM group_members WHERE group_id = $1 AND user_id = $2`, groupID, userID,
+	).Scan(&memberCheck)
+	if memberCheck == 0 {
+		return c.Status(403).JSON(fiber.Map{"error": "not a member"})
+	}
+
+	var input struct {
+		Username string `json:"username"`
+	}
+	if err := c.BodyParser(&input); err != nil || input.Username == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "username is required"})
+	}
+
+	var targetUserID string
+	err := h.db.QueryRow(`SELECT id FROM users WHERE username = $1`, input.Username).Scan(&targetUserID)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "user not found"})
+	}
+	if targetUserID == userID {
+		return c.Status(400).JSON(fiber.Map{"error": "cannot invite yourself"})
+	}
+
+	var alreadyMember int
+	h.db.QueryRow(
+		`SELECT COUNT(*) FROM group_members WHERE group_id = $1 AND user_id = $2`, groupID, targetUserID,
+	).Scan(&alreadyMember)
+	if alreadyMember > 0 {
+		return c.Status(409).JSON(fiber.Map{"error": "user is already a member"})
+	}
+
+	var groupName string
+	h.db.QueryRow(`SELECT name FROM groups WHERE id = $1`, groupID).Scan(&groupName)
+
+	var inviterUsername string
+	h.db.QueryRow(`SELECT username FROM users WHERE id = $1`, userID).Scan(&inviterUsername)
+
+	var inviteID int64
+	err = h.db.QueryRow(
+		`INSERT INTO group_invites (group_id, invited_by, invited_user_id)
+		 VALUES ($1, $2, $3)
+		 ON CONFLICT (group_id, invited_user_id) DO UPDATE SET status = 'pending', created_at = NOW()
+		 RETURNING id`,
+		groupID, userID, targetUserID,
+	).Scan(&inviteID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "failed to create invite"})
+	}
+
+	msg := "@" + inviterUsername + " приглашает тебя в группу «" + groupName + "»"
+	h.db.Exec(
+		`INSERT INTO notifications (user_id, type, message, reference_id)
+		 VALUES ($1, 'group_invite', $2, $3)`,
+		targetUserID, msg, inviteID,
+	)
+
+	return c.JSON(fiber.Map{"success": true, "invite_id": inviteID})
+}
+
 func (h *Handler) JoinGroup(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
@@ -195,15 +259,16 @@ func (h *Handler) GetGroupFeed(c *fiber.Ctx) error {
 	}
 
 	rows, err := h.db.Query(`
-		SELECT v.id, u.username, u.display_name, v.amount, v.description, v.created_at,
-		       COUNT(r.id) AS respect_count,
-		       COUNT(CASE WHEN r.from_user_id = $1 THEN 1 END) AS has_respected
-		FROM vetos v
-		JOIN users u ON u.id = v.user_id
-		JOIN group_members gm ON gm.user_id = v.user_id AND gm.group_id = $2
-		LEFT JOIN respects r ON r.veto_id = v.id
-		GROUP BY v.id, u.username, u.display_name, v.amount, v.description, v.created_at
-		ORDER BY v.created_at DESC
+		SELECT ch.id, u.username, u.display_name, ch.price, ch.name, ch.created_at,
+		       COUNT(cl.id) AS like_count,
+		       COUNT(CASE WHEN cl.user_id = $1 THEN 1 END) AS has_liked
+		FROM checks ch
+		JOIN users u ON u.id = ch.user_id
+		JOIN group_members gm ON gm.user_id = ch.user_id AND gm.group_id = $2
+		LEFT JOIN check_likes cl ON cl.check_id = ch.id
+		WHERE ch.outcome = 'stopped'
+		GROUP BY ch.id, u.username, u.display_name, ch.price, ch.name, ch.created_at
+		ORDER BY ch.created_at DESC
 		LIMIT 50
 	`, userID, groupID)
 	if err != nil {
@@ -213,20 +278,41 @@ func (h *Handler) GetGroupFeed(c *fiber.Ctx) error {
 
 	feed := make([]fiber.Map, 0)
 	for rows.Next() {
-		var id int64
-		var username, displayName, description, createdAt string
-		var amount float64
-		var respectCount, hasRespected int
-		if err := rows.Scan(&id, &username, &displayName, &amount, &description, &createdAt, &respectCount, &hasRespected); err != nil {
+		var id, checkName, username, displayName, createdAt string
+		var price float64
+		var likeCount, hasLiked int
+		if err := rows.Scan(&id, &username, &displayName, &price, &checkName, &createdAt, &likeCount, &hasLiked); err != nil {
 			continue
 		}
 		feed = append(feed, fiber.Map{
 			"id": id, "username": username, "display_name": displayName,
-			"amount": amount, "description": description, "created_at": createdAt,
-			"respect_count": respectCount, "has_respected": hasRespected > 0,
+			"amount": price, "description": checkName, "created_at": createdAt,
+			"like_count": likeCount, "has_liked": hasLiked > 0,
 		})
 	}
 	return c.JSON(feed)
+}
+
+func (h *Handler) LikeCheck(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(string)
+	checkID := c.Params("id")
+
+	_, err := h.db.Exec(
+		`INSERT INTO check_likes (check_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		checkID, userID,
+	)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "failed to like"})
+	}
+	return c.JSON(fiber.Map{"success": true})
+}
+
+func (h *Handler) UnlikeCheck(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(string)
+	checkID := c.Params("id")
+
+	h.db.Exec(`DELETE FROM check_likes WHERE check_id = $1 AND user_id = $2`, checkID, userID)
+	return c.JSON(fiber.Map{"success": true})
 }
 
 func (h *Handler) LeaveGroup(c *fiber.Ctx) error {

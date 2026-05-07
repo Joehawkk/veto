@@ -46,6 +46,9 @@ func (h *Handler) CreateCheck(c *fiber.Ctx) error {
 
 	if input.Outcome == "stopped" {
 		h.db.Exec(`UPDATE users SET total_saved = total_saved + $1 WHERE id = $2`, input.Price, userID)
+		var username string
+		h.db.QueryRow(`SELECT username FROM users WHERE id = $1`, userID).Scan(&username)
+		go h.notifyGroupMembersAboutCheck(userID, username, input.Name, input.Price)
 	}
 
 	return c.Status(201).JSON(fiber.Map{"id": id})
@@ -122,6 +125,11 @@ func (h *Handler) UpdateCheck(c *fiber.Ctx) error {
 
 		if *input.Outcome == "stopped" && currentOutcome != "stopped" {
 			h.db.Exec(`UPDATE users SET total_saved = total_saved + $1 WHERE id = $2`, price, userID)
+			var checkName string
+			h.db.QueryRow(`SELECT name FROM checks WHERE id = $1`, checkID).Scan(&checkName)
+			var username string
+			h.db.QueryRow(`SELECT username FROM users WHERE id = $1`, userID).Scan(&username)
+			go h.notifyGroupMembersAboutCheck(userID, username, checkName, price)
 		} else if currentOutcome == "stopped" && *input.Outcome != "stopped" {
 			h.db.Exec(`UPDATE users SET total_saved = GREATEST(0, total_saved - $1) WHERE id = $2`, price, userID)
 		}
