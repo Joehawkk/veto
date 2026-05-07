@@ -49,8 +49,7 @@ export default function Home() {
 
         {/* Greeting */}
         <p className="text-muted text-sm self-start">
-          {displayName ? `Привет, ${displayName}` : 'Привет'}
-          {profile?.goal ? ` — ты здесь, чтобы "${profile.goal.toLowerCase()}"` : ''} 👋
+          {displayName ? `Привет, ${displayName} 👋` : 'Привет 👋'}
         </p>
 
         {/* Savings stats */}
