@@ -106,7 +106,7 @@ func (h *Handler) InviteToGroup(c *fiber.Ctx) error {
 		`SELECT COUNT(*) FROM group_members WHERE group_id = $1 AND user_id = $2`, groupID, userID,
 	).Scan(&memberCheck)
 	if memberCheck == 0 {
-		return c.Status(403).JSON(fiber.Map{"error": "not a member"})
+		return c.Status(403).JSON(fiber.Map{"error": "Ты не в этой группе"})
 	}
 
 	var input struct {
@@ -119,10 +119,10 @@ func (h *Handler) InviteToGroup(c *fiber.Ctx) error {
 	var targetUserID string
 	err := h.db.QueryRow(`SELECT id FROM users WHERE username = $1`, input.Username).Scan(&targetUserID)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "user not found"})
+		return c.Status(404).JSON(fiber.Map{"error": "Пользователь не найден"})
 	}
 	if targetUserID == userID {
-		return c.Status(400).JSON(fiber.Map{"error": "cannot invite yourself"})
+		return c.Status(400).JSON(fiber.Map{"error": "Нельзя пригласить себя"})
 	}
 
 	var alreadyMember int
@@ -130,7 +130,7 @@ func (h *Handler) InviteToGroup(c *fiber.Ctx) error {
 		`SELECT COUNT(*) FROM group_members WHERE group_id = $1 AND user_id = $2`, groupID, targetUserID,
 	).Scan(&alreadyMember)
 	if alreadyMember > 0 {
-		return c.Status(409).JSON(fiber.Map{"error": "user is already a member"})
+		return c.Status(409).JSON(fiber.Map{"error": "Пользователь уже в группе"})
 	}
 
 	var groupName string
@@ -177,7 +177,7 @@ func (h *Handler) JoinGroup(c *fiber.Ctx) error {
 		`SELECT id, name FROM groups WHERE invite_code = $1`, input.InviteCode,
 	).Scan(&groupID, &groupName)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "group not found"})
+		return c.Status(404).JSON(fiber.Map{"error": "Группа не найдена"})
 	}
 
 	_, err = h.db.Exec(
@@ -200,7 +200,7 @@ func (h *Handler) GetGroupDetail(c *fiber.Ctx) error {
 		`SELECT COUNT(*) FROM group_members WHERE group_id = $1 AND user_id = $2`, groupID, userID,
 	).Scan(&memberCheck)
 	if memberCheck == 0 {
-		return c.Status(403).JSON(fiber.Map{"error": "not a member"})
+		return c.Status(403).JSON(fiber.Map{"error": "Ты не в этой группе"})
 	}
 
 	var id int64
@@ -209,7 +209,7 @@ func (h *Handler) GetGroupDetail(c *fiber.Ctx) error {
 		`SELECT id, name, invite_code, owner_id FROM groups WHERE id = $1`, groupID,
 	).Scan(&id, &name, &inviteCode, &ownerID)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "group not found"})
+		return c.Status(404).JSON(fiber.Map{"error": "Группа не найдена"})
 	}
 
 	rows, err := h.db.Query(`
@@ -257,7 +257,7 @@ func (h *Handler) GetGroupFeed(c *fiber.Ctx) error {
 		`SELECT COUNT(*) FROM group_members WHERE group_id = $1 AND user_id = $2`, groupID, userID,
 	).Scan(&memberCheck)
 	if memberCheck == 0 {
-		return c.Status(403).JSON(fiber.Map{"error": "not a member"})
+		return c.Status(403).JSON(fiber.Map{"error": "Ты не в этой группе"})
 	}
 
 	rows, err := h.db.Query(`
