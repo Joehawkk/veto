@@ -101,8 +101,12 @@ export default function ProfilePage() {
         {/* User card */}
         <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-black text-xl shrink-0">
-              {profile?.display_name?.[0]?.toUpperCase()}
+            <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-black text-xl shrink-0 overflow-hidden">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                (profile?.display_name || profile?.username || '')[0]?.toUpperCase() || '?'
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-black text-dark text-lg truncate">{profile?.display_name}</p>

@@ -1,12 +1,11 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, type UserProfile } from '../api/client'
+import { api } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function EditProfile() {
   const navigate = useNavigate()
-  const { user } = useAuth()
-  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const { user, login } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -16,21 +15,31 @@ export default function EditProfile() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     api.profile.get().then(({ data }) => {
-      setProfile(data)
       setDisplayName(data.display_name)
       setUsername(data.username)
       setEmail(data.email ?? '')
       setPhone(data.phone ?? '')
-      setAvatarUrl(data.avatar_url ?? '')
+      if (data.avatar_url) setAvatarPreview(data.avatar_url)
     }).finally(() => setLoading(false))
   }, [])
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setAvatarPreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -48,22 +57,37 @@ export default function EditProfile() {
 
     setSaving(true)
     try {
-      const updates: Parameters<typeof api.me.update>[0] = {}
-      if (displayName !== profile?.display_name) updates.display_name = displayName
-      if (username !== profile?.username) updates.username = username
-      updates.email = email || null
-      updates.phone = phone || null
-      updates.avatar_url = avatarUrl || null
+      // Upload avatar first if a file was selected
+      let newAvatarUrl: string | undefined
+      if (avatarFile) {
+        const { data } = await api.me.uploadAvatar(avatarFile)
+        newAvatarUrl = data.avatar_url
+      }
+
+      // Update other profile fields
+      const updates: Parameters<typeof api.me.update>[0] = {
+        display_name: displayName,
+        username,
+        email: email || null,
+        phone: phone || null,
+      }
+      if (newAvatarUrl) updates.avatar_url = newAvatarUrl
       if (newPassword) {
         updates.current_password = currentPassword
         updates.new_password = newPassword
       }
 
-      await api.me.update(updates)
+      const { data: updated } = await api.me.update(updates)
+
+      // Refresh the AuthContext so display_name/username are current everywhere
+      const token = localStorage.getItem('token') ?? ''
+      login(token, updated.id, updated.username, updated.display_name)
+
       setSuccess('Изменения сохранены!')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
+      setAvatarFile(null)
       setTimeout(() => navigate('/profile'), 1200)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -81,7 +105,7 @@ export default function EditProfile() {
     )
   }
 
-  const initials = (displayName || user?.display_name || '?')[0]?.toUpperCase()
+  const initials = (displayName || user?.username || '')[0]?.toUpperCase()
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
@@ -94,15 +118,40 @@ export default function EditProfile() {
 
       <main className="flex-1 px-6 py-6 pb-10 max-w-md mx-auto w-full flex flex-col gap-5">
 
-        {/* Avatar preview */}
-        <div className="flex justify-center py-2">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="avatar" className="w-20 h-20 rounded-full object-cover border-2 border-primary/30" />
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center text-primary font-black text-3xl">
-              {initials}
+        {/* Avatar picker */}
+        <div className="flex flex-col items-center py-2 gap-3">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="relative group"
+          >
+            {avatarPreview ? (
+              <img
+                src={avatarPreview}
+                alt="avatar"
+                className="w-24 h-24 rounded-full object-cover border-2 border-primary/30 group-hover:opacity-80 transition-opacity"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center text-primary font-black text-4xl group-hover:opacity-80 transition-opacity">
+                {initials || '?'}
+              </div>
+            )}
+            {/* Camera overlay */}
+            <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
             </div>
-          )}
+          </button>
+          <p className="text-muted text-xs">Нажми для выбора фото</p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={handleFileChange}
+            className="hidden"
+          />
         </div>
 
         {success && (
@@ -155,21 +204,12 @@ export default function EditProfile() {
                 className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
-
-            <div>
-              <label className="text-muted text-xs font-semibold block mb-1.5 uppercase tracking-wide">Аватар (URL)</label>
-              <input
-                type="url" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-            </div>
           </div>
 
           {/* Password change */}
           <div className="bg-white border border-border rounded-2xl p-5 shadow-card flex flex-col gap-4">
             <h2 className="font-black text-dark text-sm uppercase tracking-wider">Сменить пароль</h2>
-            <p className="text-muted text-xs -mt-2">Оставь пустым, если не хочешь менять пароль</p>
+            <p className="text-muted text-xs -mt-2">Оставь пустым, если не хочешь менять</p>
 
             <div>
               <label className="text-muted text-xs font-semibold block mb-1.5 uppercase tracking-wide">Текущий пароль</label>

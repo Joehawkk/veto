@@ -85,7 +85,7 @@ export interface Group {
 }
 
 export interface GroupDetail extends Group {
-  members: { id: string; username: string; display_name: string; total_saved: number; rank: number; is_me: boolean }[]
+  members: { id: string; username: string; display_name: string; total_saved: number; rank: number; is_me: boolean; avatar_url: string | null }[]
 }
 
 export interface Notification {
@@ -124,6 +124,13 @@ export const api = {
   },
   me: {
     get: () => client.get<UserProfile>('/me'),
+    uploadAvatar: (file: File) => {
+      const form = new FormData()
+      form.append('avatar', file)
+      return client.post<{ avatar_url: string }>('/profile/avatar', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
     update: (data: {
       display_name?: string
       username?: string

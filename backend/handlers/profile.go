@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -195,6 +198,43 @@ func (h *Handler) DeleteProfile(c *fiber.Ctx) error {
 	h.db.Exec(`DELETE FROM groups WHERE owner_id = $1`, userID)
 	h.db.Exec(`DELETE FROM users WHERE id = $1`, userID)
 	return c.JSON(fiber.Map{"success": true})
+}
+
+func (h *Handler) UploadAvatar(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(string)
+
+	file, err := c.FormFile("avatar")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "avatar file required"})
+	}
+
+	// Limit to 5MB
+	if file.Size > 5*1024*1024 {
+		return c.Status(400).JSON(fiber.Map{"error": "file too large (max 5MB)"})
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	allowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true}
+	if !allowed[ext] {
+		return c.Status(400).JSON(fiber.Map{"error": "only jpg, png, webp, gif allowed"})
+	}
+
+	uploadsDir := "uploads"
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "failed to create uploads dir"})
+	}
+
+	filename := fmt.Sprintf("%s%s", userID, ext)
+	savePath := filepath.Join(uploadsDir, filename)
+
+	if err := c.SaveFile(file, savePath); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "failed to save file"})
+	}
+
+	avatarURL := "/uploads/" + filename
+	h.db.Exec(`UPDATE users SET avatar_url = $1 WHERE id = $2`, avatarURL, userID)
+
+	return c.JSON(fiber.Map{"avatar_url": avatarURL})
 }
 
 func itoa(n int) string {

@@ -44,6 +44,10 @@ func main() {
 	app.Use(logger.New())
 
 	h := handlers.New(database, cfg)
+
+	// Serve uploaded avatars
+	app.Static("/uploads", "./uploads")
+
 	api := app.Group("/api")
 
 	// Auth (public)
@@ -62,6 +66,7 @@ func main() {
 	p.Get("/profile", h.GetProfile)
 	p.Patch("/profile", h.UpdateProfile)
 	p.Delete("/profile", h.DeleteProfile)
+	p.Post("/profile/avatar", h.UploadAvatar)
 
 	// Goals
 	p.Get("/goals", h.GetGoals)
