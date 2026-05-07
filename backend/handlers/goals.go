@@ -75,9 +75,27 @@ func (h *Handler) UpdateGoal(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "title and target_amount are required"})
 	}
 
+	// Recalculate current_amount from actual vetos linked to this goal
+	var vetoSum float64
+	h.db.QueryRow(
+		`SELECT COALESCE(SUM(amount), 0) FROM vetos WHERE goal_id = $1 AND user_id = $2`,
+		goalID, userID,
+	).Scan(&vetoSum)
+
+	// Cap at new target; mark completed if reached
+	newCurrent := vetoSum
+	if newCurrent > input.TargetAmount {
+		newCurrent = input.TargetAmount
+	}
+	newStatus := "active"
+	if newCurrent >= input.TargetAmount && input.TargetAmount > 0 {
+		newStatus = "completed"
+	}
+
 	result, err := h.db.Exec(
-		`UPDATE goals SET title = $1, target_amount = $2 WHERE id = $3 AND user_id = $4`,
-		input.Title, input.TargetAmount, goalID, userID,
+		`UPDATE goals SET title = $1, target_amount = $2, current_amount = $3, status = $4
+		 WHERE id = $5 AND user_id = $6`,
+		input.Title, input.TargetAmount, newCurrent, newStatus, goalID, userID,
 	)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to update goal"})
@@ -88,5 +106,16 @@ func (h *Handler) UpdateGoal(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "goal not found"})
 	}
 
-	return c.JSON(fiber.Map{"success": true})
+	// Re-sync user's total_saved to sum of all their goals' current_amount
+	h.db.Exec(
+		`UPDATE users SET total_saved = COALESCE(
+			(SELECT SUM(current_amount) FROM goals WHERE user_id = $1), 0)
+		 WHERE id = $1`, userID,
+	)
+
+	return c.JSON(fiber.Map{
+		"success":        true,
+		"current_amount": newCurrent,
+		"status":         newStatus,
+	})
 }
