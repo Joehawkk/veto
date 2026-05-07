@@ -3,7 +3,7 @@ import { type CheckEntry } from '../api/client'
 import { type Verdict } from '../lib/scoring'
 import { useChecks } from '../hooks/useChecks'
 import VerdictBadge from '../components/VerdictBadge'
-import { HeartIcon, CartIcon, WaitIcon } from '../components/Icons'
+import { HeartIcon, CartIcon, WaitIcon, CheckMarkIcon, XIcon, ClockIcon, WarningIcon, TagIcon } from '../components/Icons'
 
 const OUTCOME = {
   stopped: { label: 'Отказался',       color: 'text-primary' },
@@ -91,8 +91,8 @@ export default function HistoryDetail() {
             <div className="flex items-center justify-between mb-3">
               <VerdictBadge verdict={entry.ai_verdict as Verdict} size="lg" ghost />
               {entry.has_discount && (
-                <span className="text-xs font-bold text-white bg-white/20 px-2.5 py-1 rounded-full">
-                  🏷️ Скидка
+                <span className="text-xs font-bold text-white bg-white/20 px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <TagIcon size={12} /> Скидка
                 </span>
               )}
             </div>
@@ -119,13 +119,15 @@ export default function HistoryDetail() {
               ? 'bg-secondary/10 border border-secondary/20'
               : 'bg-[#FFDE8A]/40 border border-[#FF9E30]/30'
           }`}>
-            <span className="text-xl">⏰</span>
+            <div className={expired ? 'text-secondary' : 'text-[#F86D06]'}>
+              {expired ? <WarningIcon size={22} /> : <ClockIcon size={22} />}
+            </div>
             <div>
               <p className={`text-xs uppercase tracking-wide font-bold mb-0.5 ${expired ? 'text-secondary' : 'text-[#F86D06]'}`}>
                 Таймер на решение
               </p>
               <p className={`text-sm font-bold ${expired ? 'text-secondary' : 'text-[#F86D06]'}`}>
-                {expired ? '⚠️ Время вышло — пора решить!' : getTimeLeft(entry.timer_deadline!)}
+                {expired ? 'Время вышло — пора решить!' : getTimeLeft(entry.timer_deadline!)}
               </p>
             </div>
           </div>
@@ -151,15 +153,17 @@ export default function HistoryDetail() {
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <p className="text-muted text-sm">Нужно прямо сейчас?</p>
-                <span className={`text-sm font-bold ${entry.answers.needNow ? 'text-secondary' : 'text-primary'}`}>
-                  {entry.answers.needNow ? '✅ Да' : '❌ Нет'}
+                <span className={`text-sm font-bold flex items-center gap-1 ${entry.answers.needNow ? 'text-secondary' : 'text-primary'}`}>
+                  {entry.answers.needNow ? <CheckMarkIcon size={14} /> : <XIcon size={14} />}
+                  {entry.answers.needNow ? 'Да' : 'Нет'}
                 </span>
               </div>
               <div className="h-px bg-border" />
               <div className="flex items-center justify-between">
                 <p className="text-muted text-sm">Есть похожее?</p>
-                <span className={`text-sm font-bold ${entry.answers.hasSimilar ? 'text-secondary' : 'text-primary'}`}>
-                  {entry.answers.hasSimilar ? '✅ Да' : '❌ Нет'}
+                <span className={`text-sm font-bold flex items-center gap-1 ${entry.answers.hasSimilar ? 'text-secondary' : 'text-primary'}`}>
+                  {entry.answers.hasSimilar ? <CheckMarkIcon size={14} /> : <XIcon size={14} />}
+                  {entry.answers.hasSimilar ? 'Да' : 'Нет'}
                 </span>
               </div>
               <div className="h-px bg-border" />

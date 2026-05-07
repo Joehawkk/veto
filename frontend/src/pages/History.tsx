@@ -4,7 +4,7 @@ import { type CheckEntry } from '../api/client'
 import { type Verdict } from '../lib/scoring'
 import BottomNav from '../components/BottomNav'
 import VerdictBadge from '../components/VerdictBadge'
-import { HeartIcon, CartIcon } from '../components/Icons'
+import { HeartIcon, CartIcon, ClockIcon, WarningIcon, TagIcon } from '../components/Icons'
 
 const OUTCOME = {
   stopped: { label: 'Отказался', color: 'text-primary' },
@@ -81,13 +81,19 @@ function Card({ entry, onOutcome }: { entry: CheckEntry; onOutcome: (id: string,
             ? 'bg-secondary/10 border border-secondary/20 text-secondary'
             : 'bg-[#FFDE8A]/40 border border-[#FF9E30]/30 text-[#F86D06]'
         }`}>
-          <span>⏰</span>
-          <span>{expired ? '⚠️ Время вышло — пора решить!' : getTimeLeft(entry.timer_deadline!)}</span>
+          {expired ? <WarningIcon size={13} /> : <ClockIcon size={13} />}
+          <span>{expired ? 'Время вышло — пора решить!' : getTimeLeft(entry.timer_deadline!)}</span>
         </div>
       )}
 
+      {entry.has_discount && (
+        <p className="text-[#F86D06] text-xs mt-2 flex items-center gap-1">
+          <TagIcon size={11} /> Со скидкой
+        </p>
+      )}
+
       {entry.ai_comment && (
-        <p className="text-muted text-xs mt-3 leading-relaxed line-clamp-2">🤖 {entry.ai_comment}</p>
+        <p className="text-muted text-xs mt-3 leading-relaxed line-clamp-2">{entry.ai_comment}</p>
       )}
 
       {isPending && (
