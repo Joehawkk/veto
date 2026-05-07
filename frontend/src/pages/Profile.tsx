@@ -125,7 +125,7 @@ export default function ProfilePage() {
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-bg rounded-xl p-3 text-center">
-              <p className="text-primary font-black text-xl">{stats.saved.toLocaleString('ru')} ₽</p>
+              <p className="text-primary font-black text-xl">{(profile?.total_saved ?? 0).toLocaleString('ru')} ₽</p>
               <p className="text-muted text-[10px] mt-0.5">сэкономлено</p>
             </div>
             <div className="bg-bg rounded-xl p-3 text-center">
