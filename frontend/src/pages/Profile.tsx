@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type Profile, type Goal } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
+import BottomNav from '../components/BottomNav'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
@@ -85,8 +86,11 @@ export default function ProfilePage() {
   const completedGoals = profile?.goals?.filter((g: Goal) => g.status === 'completed') ?? []
 
   return (
-    <div className="p-6 max-w-lg mx-auto">
-      <h1 className="text-2xl font-black mb-8">Профиль</h1>
+    <div className="min-h-screen bg-bg">
+      <header className="px-6 py-5 bg-white border-b border-border">
+        <h1 className="text-xl font-black text-dark">Профиль</h1>
+      </header>
+    <div className="p-6 pb-24 max-w-lg mx-auto">
 
       {/* Stats */}
       <div className="bg-card border border-border rounded-2xl p-6 mb-6">
@@ -243,6 +247,8 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+    </div>
+      <BottomNav />
     </div>
   )
 }

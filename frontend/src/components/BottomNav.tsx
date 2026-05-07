@@ -24,9 +24,9 @@ const tabs = [
     ),
   },
   {
-    to: '/accounts',
+    to: '/profile',
     exact: false,
-    label: 'Аккаунты',
+    label: 'Профиль',
     icon: (active: boolean) => (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="8" r="4" />
