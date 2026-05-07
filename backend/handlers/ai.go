@@ -503,7 +503,7 @@ func suggestionPool(interest string, price float64) []string {
 		case p <= 300:
 			return []string{
 				fmt.Sprintf("%.0f ₽ — инди-игра в Steam по акции, типа Hades или Hollow Knight.", p),
-				fmt.Sprintf("%.0f ₽ = месяц Xbox Game Pass (209–289 ₽/мес) — десятки игр сразу.", p),
+				fmt.Sprintf("%.0f ₽ — несколько инди-игр в Steam по акции: Hades, Celeste, Disco Elysium.", p),
 				fmt.Sprintf("%.0f ₽ на мобильную игру или DLC к любимой игре.", p),
 				fmt.Sprintf("%.0f ₽ в Steam-кошелёк — дождись следующей распродажи и возьми больше.", p),
 				fmt.Sprintf("%.0f ₽ — саундтрек любимой игры на Bandcamp, поддержи разработчика.", p),
@@ -511,7 +511,7 @@ func suggestionPool(interest string, price float64) []string {
 		case p <= 1000:
 			return []string{
 				fmt.Sprintf("%.0f ₽ — AAA-игра на распродаже в Steam: Cyberpunk 2077, RDR2, Elden Ring.", p),
-				fmt.Sprintf("%.0f ₽ = 3 месяца Xbox Game Pass Ultimate с EA Play.", p),
+				fmt.Sprintf("%.0f ₽ — подписка Game Pass или 2–3 игры в Steam в сезон распродаж.", p),
 				fmt.Sprintf("%.0f ₽ — инди-бандл из 4–5 игр на Humble Bundle.", p),
 				fmt.Sprintf("%.0f ₽ на топовый мод или расширение к любимой игре.", p),
 				fmt.Sprintf("%.0f ₽ — коврик для мыши XXL или игровые наушники б/у на Авито.", p),
