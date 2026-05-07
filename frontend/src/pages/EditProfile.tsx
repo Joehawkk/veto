@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
+﻿import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
@@ -109,7 +109,7 @@ export default function EditProfile() {
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
-      <header className="flex items-center gap-4 px-6 py-5 bg-white border-b border-border">
+      <header className="flex items-center gap-4 px-6 py-5 bg-card border-b border-border">
         <button onClick={() => navigate('/profile')} className="text-muted hover:text-dark transition-colors text-xl">
           ←
         </button>
@@ -168,7 +168,7 @@ export default function EditProfile() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
           {/* Basic info */}
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card flex flex-col gap-4">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-card flex flex-col gap-4">
             <h2 className="font-black text-dark text-sm uppercase tracking-wider">Основное</h2>
 
             <div>
@@ -207,7 +207,7 @@ export default function EditProfile() {
           </div>
 
           {/* Password change */}
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card flex flex-col gap-4">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-card flex flex-col gap-4">
             <h2 className="font-black text-dark text-sm uppercase tracking-wider">Сменить пароль</h2>
             <p className="text-muted text-xs -mt-2">Оставь пустым, если не хочешь менять</p>
 

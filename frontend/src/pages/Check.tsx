@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCurrent, setCheckResult, type CheckAnswers, type MoodValue, type ThoughtDuration } from '../lib/storage'
 import { getLocalVerdict } from '../lib/scoring'
@@ -102,7 +102,7 @@ export default function Check() {
   return (
     <div className="min-h-screen bg-bg flex flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-border">
+      <header className="flex items-center justify-between px-6 py-4 bg-card border-b border-border">
         <button onClick={() => navigate('/')} className="text-muted hover:text-dark transition-colors text-sm font-medium">
           ← Назад
         </button>
@@ -120,7 +120,7 @@ export default function Check() {
         </div>
 
         {/* Question 1: Need now */}
-        <div className="bg-white border border-border rounded-2xl p-5 mb-4 shadow-card">
+        <div className="bg-card border border-border rounded-2xl p-5 mb-4 shadow-card">
           <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-3 ${CATEGORIES.needNow.categoryColor}`}>
             {CATEGORIES.needNow.category}
           </span>
@@ -153,7 +153,7 @@ export default function Check() {
         </div>
 
         {/* Question 2: Has similar */}
-        <div className="bg-white border border-border rounded-2xl p-5 mb-4 shadow-card">
+        <div className="bg-card border border-border rounded-2xl p-5 mb-4 shadow-card">
           <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-3 ${CATEGORIES.hasSimilar.categoryColor}`}>
             {CATEGORIES.hasSimilar.category}
           </span>
@@ -186,7 +186,7 @@ export default function Check() {
         </div>
 
         {/* Question 3: Duration */}
-        <div className="bg-white border border-border rounded-2xl p-5 mb-4 shadow-card">
+        <div className="bg-card border border-border rounded-2xl p-5 mb-4 shadow-card">
           <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-3 ${CATEGORIES.duration.categoryColor}`}>
             {CATEGORIES.duration.category}
           </span>
@@ -212,7 +212,7 @@ export default function Check() {
         </div>
 
         {/* Question 4: Mood */}
-        <div className="bg-white border border-border rounded-2xl p-5 mb-6 shadow-card">
+        <div className="bg-card border border-border rounded-2xl p-5 mb-6 shadow-card">
           <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-3 ${CATEGORIES.mood.categoryColor}`}>
             {CATEGORIES.mood.category}
           </span>

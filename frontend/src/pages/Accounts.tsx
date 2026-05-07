@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { api, type AccountUser } from '../api/client'
 import BottomNav from '../components/BottomNav'
 
@@ -32,7 +32,7 @@ export default function Accounts() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <header className="flex items-center gap-4 px-6 py-5 bg-white border-b border-border">
+      <header className="flex items-center gap-4 px-6 py-5 bg-card border-b border-border">
         <div className="flex-1">
           <h1 className="text-xl font-black text-dark">Аккаунты</h1>
           <p className="text-muted text-xs">{users.length} пользователей в базе</p>
@@ -46,7 +46,7 @@ export default function Accounts() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Поиск по имени..."
-          className="w-full bg-white border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary transition-colors mb-4 shadow-card"
+          className="w-full bg-card border border-border rounded-xl px-4 py-3 text-dark placeholder-muted focus:outline-none focus:border-primary transition-colors mb-4 shadow-card"
         />
 
         {loading && (
@@ -72,7 +72,7 @@ export default function Accounts() {
           {filtered.map((u, i) => (
             <div
               key={u.id}
-              className="bg-white border border-border rounded-2xl p-4 shadow-card"
+              className="bg-card border border-border rounded-2xl p-4 shadow-card"
             >
               <div className="flex items-center gap-3">
                 {/* Avatar / rank */}

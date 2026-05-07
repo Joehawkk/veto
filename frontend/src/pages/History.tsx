@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+﻿import { Link, useNavigate } from 'react-router-dom'
 import { useChecks } from '../hooks/useChecks'
 import { type CheckEntry } from '../api/client'
 import { type Verdict } from '../lib/scoring'
@@ -24,7 +24,7 @@ function outcomeCardClass(entry: CheckEntry): string {
   // pending — ждут решения (не зелёные!)
   if (entry.ai_verdict === 'go')   return 'border-green-400 bg-green-50 shadow-card'
   if (entry.ai_verdict === 'wait') return 'border-amber-200 bg-amber-50 shadow-card'
-  return 'border-border bg-white shadow-card'
+  return 'border-border bg-card shadow-card'
 }
 
 function getTimeLeft(deadline: string): string {
@@ -124,7 +124,7 @@ export default function History() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <header className="flex items-center gap-4 px-6 py-5 bg-white border-b border-border">
+      <header className="flex items-center gap-4 px-6 py-5 bg-card border-b border-border">
         <div className="flex-1">
           <h1 className="text-xl font-black text-dark">История</h1>
           <p className="text-muted text-xs">{checks.length} проверок</p>
@@ -133,15 +133,15 @@ export default function History() {
 
       <main className="px-6 py-6 pb-24 max-w-md mx-auto">
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="bg-white border border-border rounded-2xl p-4 text-center shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-4 text-center shadow-card">
             <p className="text-primary font-black text-xl">{stats.saved.toLocaleString('ru')}</p>
             <p className="text-muted text-[10px] mt-0.5">₽ сохранено</p>
           </div>
-          <div className="bg-white border border-border rounded-2xl p-4 text-center shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-4 text-center shadow-card">
             <p className="text-dark font-black text-xl">{stats.stopped}</p>
             <p className="text-muted text-[10px] mt-0.5">отказов</p>
           </div>
-          <div className="bg-white border border-border rounded-2xl p-4 text-center shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-4 text-center shadow-card">
             <p className="text-dark font-black text-xl">{stats.bought}</p>
             <p className="text-muted text-[10px] mt-0.5">куплено</p>
           </div>

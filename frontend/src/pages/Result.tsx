@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { getCheckResult, getCurrent } from '../lib/storage'
 import { useAI, type AIResult } from '../hooks/useAI'
@@ -39,13 +39,13 @@ function LoadingScreen({ name, price }: { name: string; price: number }) {
         <p className="text-muted text-sm mb-1">AI изучает твои ответы и выносит вердикт</p>
         <p className="text-primary/70 text-xs mb-10">"{name}" · {price.toLocaleString('ru')} ₽</p>
         <div className="flex flex-col gap-4 w-full">
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
             <div className="h-4 bg-bg rounded animate-pulse w-1/3 mb-4" />
             <div className="h-6 bg-bg rounded animate-pulse w-2/3 mb-3" />
             <div className="h-3 bg-bg rounded animate-pulse w-full mb-2" />
             <div className="h-3 bg-bg rounded animate-pulse w-4/5" />
           </div>
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
             <div className="h-3 bg-bg rounded animate-pulse w-full mb-2" />
             <div className="h-3 bg-bg rounded animate-pulse w-3/4" />
           </div>
@@ -83,7 +83,7 @@ function CelebrationScreen({
         </div>
 
         {/* Savings card */}
-        <div className="w-full bg-white border border-border rounded-2xl overflow-hidden shadow-card">
+        <div className="w-full bg-card border border-border rounded-2xl overflow-hidden shadow-card">
           <div className="px-5 py-4" style={{ background: 'linear-gradient(135deg, #FD7203 0%, #F86D06 100%)' }}>
             <p className="text-white/80 text-xs uppercase tracking-widest font-bold mb-1">Отказался от</p>
             <p className="text-white font-bold text-base truncate">{name}</p>
@@ -112,7 +112,7 @@ function CelebrationScreen({
           <button onClick={onHome} className="w-full bg-primary text-white font-black py-4 rounded-xl shadow-orange hover:shadow-orange-lg transition-all active:scale-[0.98]">
             На главную
           </button>
-          <button onClick={onHistory} className="w-full border border-border bg-white text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card flex items-center justify-center gap-2">
+          <button onClick={onHistory} className="w-full border border-border bg-card text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card flex items-center justify-center gap-2">
             <ListIcon size={16} /> Посмотреть историю
           </button>
         </div>
@@ -203,7 +203,7 @@ export default function Result() {
           <VerdictBadge verdict={aiResult.verdict as Verdict} size="lg" ghost />
         </div>
         <div className="flex gap-3 items-start">
-          <div className="shrink-0 w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mt-0.5 text-white">
+          <div className="shrink-0 w-9 h-9 rounded-xl bg-card/20 flex items-center justify-center mt-0.5 text-white">
             <BotIcon size={18} />
           </div>
           <div>
@@ -217,7 +217,7 @@ export default function Result() {
 
         {/* Interest suggestion — only for wait/veto */}
         {suggestion && (
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-primary"><LightbulbIcon size={18} /></span>
               <p className="text-dark font-black text-sm">Лучше потрать на это</p>
@@ -227,7 +227,7 @@ export default function Result() {
         )}
 
         {/* Item info */}
-        <div className="flex items-center justify-between py-3 px-4 bg-white border border-border rounded-xl shadow-card">
+        <div className="flex items-center justify-between py-3 px-4 bg-card border border-border rounded-xl shadow-card">
           <div>
             <p className="text-dark font-medium text-sm">{current.name}</p>
             {current.hasDiscount && <p className="text-[#F86D06] text-xs mt-0.5 flex items-center gap-1"><TagIcon size={12} /> Со скидкой</p>}
@@ -237,7 +237,7 @@ export default function Result() {
 
         {/* Timer */}
         {!timerSet ? (
-          <div className="bg-white border border-border rounded-2xl p-5 shadow-card">
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-card">
             <p className="text-dark font-bold mb-1 flex items-center gap-2"><ClockIcon size={16} /> Нужно подумать?</p>
             <p className="text-muted text-xs mb-4">Поставь таймер — напомним вернуться и решить</p>
             <div className="flex flex-wrap gap-2">
@@ -277,7 +277,7 @@ export default function Result() {
                 </button>
                 <button
                   onClick={() => handleOutcome('bought')}
-                  className="w-full border border-border bg-white text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card flex items-center justify-center gap-2"
+                  className="w-full border border-border bg-card text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card flex items-center justify-center gap-2"
                 >
                   <CartIcon size={16} /> Всё равно куплю
                 </button>
@@ -292,7 +292,7 @@ export default function Result() {
                 </button>
                 <button
                   onClick={() => handleOutcome('stopped')}
-                  className="w-full border border-border bg-white text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card flex items-center justify-center gap-2"
+                  className="w-full border border-border bg-card text-gray-dark font-medium py-3 rounded-xl hover:border-border-dark transition-colors shadow-card flex items-center justify-center gap-2"
                 >
                   <HeartIcon size={16} /> Всё-таки откажусь
                 </button>
