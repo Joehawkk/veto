@@ -25,11 +25,6 @@ export default function GroupDetail() {
   const [goalAmount, setGoalAmount] = useState('')
   const [goalLoading, setGoalLoading] = useState(false)
 
-  // Contribute
-  const [contributeGoalId, setContributeGoalId] = useState<number | null>(null)
-  const [contributeAmount, setContributeAmount] = useState('')
-  const [contributeLoading, setContributeLoading] = useState(false)
-
   // Transfer ownership dialog
   const [transferTarget, setTransferTarget] = useState<string | null>(null)
 
@@ -105,18 +100,6 @@ export default function GroupDetail() {
       reloadGoals()
     } catch {}
     finally { setGoalLoading(false) }
-  }
-
-  async function handleContribute(e: FormEvent) {
-    e.preventDefault()
-    if (!id || !contributeGoalId || !contributeAmount) return
-    setContributeLoading(true)
-    try {
-      await api.groups.contributeGoal(Number(id), contributeGoalId, parseFloat(contributeAmount))
-      setContributeGoalId(null); setContributeAmount('')
-      reloadGoals()
-    } catch {}
-    finally { setContributeLoading(false) }
   }
 
   async function handleSetRole(userId: string, role: 'admin' | 'member') {
@@ -353,32 +336,10 @@ export default function GroupDetail() {
                   <div className="w-full bg-border rounded-full h-2 mb-2">
                     <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
                   </div>
-                  <div className="flex justify-between text-xs text-muted mb-4">
+                  <div className="flex justify-between text-xs text-muted">
                     <span>{goal.current_amount.toLocaleString('ru')} ₽</span>
                     <span>{goal.target_amount.toLocaleString('ru')} ₽</span>
                   </div>
-                  {goal.status === 'active' && (
-                    contributeGoalId === goal.id ? (
-                      <form onSubmit={handleContribute} className="flex gap-2">
-                        <input
-                          type="number" value={contributeAmount} onChange={(e) => setContributeAmount(e.target.value)}
-                          placeholder="Сумма (₽)" required min={1} autoFocus
-                          className="flex-1 bg-bg border border-border rounded-xl px-3 py-2 text-dark placeholder-muted focus:outline-none focus:border-primary text-sm"
-                        />
-                        <button type="button" onClick={() => { setContributeGoalId(null); setContributeAmount('') }} className="text-muted text-sm px-2">✕</button>
-                        <button type="submit" disabled={contributeLoading} className="bg-primary text-white font-bold px-3 py-2 rounded-xl text-xs shadow-orange disabled:opacity-60">
-                          {contributeLoading ? '...' : 'Внести'}
-                        </button>
-                      </form>
-                    ) : (
-                      <button
-                        onClick={() => setContributeGoalId(goal.id)}
-                        className="w-full border border-primary text-primary font-bold py-2 rounded-xl text-sm hover:bg-primary/5 transition-colors"
-                      >
-                        Внести вклад
-                      </button>
-                    )
-                  )}
                 </div>
               )
             })}

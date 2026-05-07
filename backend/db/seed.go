@@ -21,22 +21,38 @@ func Seed(db *sql.DB) error {
 
 	type seedUser struct {
 		username, displayName, avatarURL string
-		totalSaved                       float64
+		profileData                      string
 	}
 
 	users := []seedUser{
-		{"alex", "Алекс", "/uploads/626457731d0ab3dc14118c6c4f348661.jpg", 18500},
-		{"mika", "Мика", "/uploads/8478ebe165b0bfe2ff91654442540e35.jpg", 32000},
-		{"dima", "Дима", "/uploads/851acfc242e03dbe748c4347272490b2.jpg", 15000},
-		{"kata", "Катя", "/uploads/d6f4e1fdcdceb83ac1a8a944975143a3.jpg", 45000},
-		{"ivan", "Иван", "/uploads/f0bf470f239b6b17d76859ec149a3301.jpg", 4800},
+		{
+			"alex", "Алекс", "/uploads/626457731d0ab3dc14118c6c4f348661.jpg",
+			`{"goal":"Коплю на конкретную цель","spendingTriggers":["Скидки и акции","Реклама в соцсетях"],"interests":["Технологии","Игры"],"monthlySpend":5000,"savingsTarget":90000,"savingsMonths":6}`,
+		},
+		{
+			"mika", "Мика", "/uploads/8478ebe165b0bfe2ff91654442540e35.jpg",
+			`{"goal":"Хочу тратить осознаннее","spendingTriggers":["Стресс или тревога","Скука"],"interests":["Музыка","Технологии"],"monthlySpend":8000,"savingsTarget":120000,"savingsMonths":8}`,
+		},
+		{
+			"dima", "Дима", "/uploads/851acfc242e03dbe748c4347272490b2.jpg",
+			`{"goal":"Коплю на конкретную цель","spendingTriggers":["Влияние друзей","Скидки и акции"],"interests":["Игры","Кино и сериалы"],"monthlySpend":4000,"savingsTarget":60000,"savingsMonths":5}`,
+		},
+		{
+			"kata", "Катя", "/uploads/d6f4e1fdcdceb83ac1a8a944975143a3.jpg",
+			`{"goal":"Справляюсь с финансовым стрессом","spendingTriggers":["Стресс или тревога","Реклама в соцсетях"],"interests":["Путешествия","Мода"],"monthlySpend":10000,"savingsTarget":200000,"savingsMonths":12}`,
+		},
+		{
+			"ivan", "Иван", "/uploads/f0bf470f239b6b17d76859ec149a3301.jpg",
+			`{"goal":"Хочу тратить осознаннее","spendingTriggers":["Скука","Усталость после учёбы"],"interests":["Игры","Технологии"],"monthlySpend":3000,"savingsTarget":12000,"savingsMonths":3}`,
+		},
 	}
 
 	userIDs := make([]string, len(users))
 	for i, u := range users {
 		err := db.QueryRow(
-			`INSERT INTO users (username, password_hash, display_name, avatar_url, total_saved) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			u.username, pw, u.displayName, u.avatarURL, u.totalSaved,
+			`INSERT INTO users (username, password_hash, display_name, avatar_url, total_saved, onboarded, profile_data)
+			 VALUES ($1, $2, $3, $4, 0, true, $5::jsonb) RETURNING id`,
+			u.username, pw, u.displayName, u.avatarURL, u.profileData,
 		).Scan(&userIDs[i])
 		if err != nil {
 			return err
@@ -103,6 +119,11 @@ func Seed(db *sql.DB) error {
 			 VALUES ($1, $2, $3, $4, NOW() - $5::INTERVAL) RETURNING id`,
 			userIDs[v.userIdx], goalIDs[v.goalIdx], v.amount, v.description, v.ago,
 		).Scan(&vetoIDs[i])
+	}
+
+	// Recalculate total_saved from actual veto records
+	for _, uid := range userIDs {
+		db.Exec(`UPDATE users SET total_saved = COALESCE((SELECT SUM(amount) FROM vetos WHERE user_id = $1), 0) WHERE id = $1`, uid)
 	}
 
 	// Respects

@@ -102,6 +102,8 @@ func Migrate(db *sql.DB) error {
 		`ALTER TABLE group_members ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member'`,
 		`UPDATE group_members gm SET role = 'owner' FROM groups g WHERE g.id = gm.group_id AND g.owner_id = gm.user_id AND gm.role = 'member'`,
 		`ALTER TABLE checks ADD COLUMN IF NOT EXISTS ai_suggestion TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded BOOLEAN NOT NULL DEFAULT false`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_data JSONB NOT NULL DEFAULT '{}'::jsonb`,
 	}
 	for _, s := range stmts {
 		if _, err := db.Exec(s); err != nil {

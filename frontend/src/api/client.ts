@@ -132,7 +132,7 @@ export const api = {
     register: (data: { username: string; display_name: string; password: string }) =>
       client.post<{ token: string; user_id: string; username: string; display_name: string }>('/auth/register', data),
     login: (data: { username: string; password: string }) =>
-      client.post<{ token: string; user_id: string; username: string; display_name: string }>('/auth/login', data),
+      client.post<{ token: string; user_id: string; username: string; display_name: string; onboarded?: boolean; profile_data?: string }>('/auth/login', data),
   },
   me: {
     get: () => client.get<UserProfile>('/me'),

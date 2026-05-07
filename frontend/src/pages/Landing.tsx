@@ -1,5 +1,6 @@
 ﻿import { Link } from 'react-router-dom'
-import { ZapIcon, FlameIcon, TargetIcon } from '../components/Icons'
+import { ZapIcon, FlameIcon, TargetIcon, MoonIcon } from '../components/Icons'
+import { useTheme } from '../contexts/ThemeContext'
 
 const features = [
   {
@@ -23,12 +24,23 @@ const features = [
 ]
 
 export default function Landing() {
+  const { theme, toggleTheme } = useTheme()
+
   return (
     <div className="min-h-screen bg-bg text-dark">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-5 max-w-5xl mx-auto">
         <span className="text-primary font-black text-xl tracking-widest">VETO</span>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleTheme}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+              theme === 'dark' ? 'bg-primary/20 text-primary' : 'bg-card text-muted hover:text-dark border border-border'
+            }`}
+            title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+          >
+            <MoonIcon size={18} />
+          </button>
           <Link
             to="/login"
             className="px-4 py-2 text-sm font-medium text-muted hover:text-dark transition-colors"
@@ -67,21 +79,39 @@ export default function Landing() {
         </Link>
       </section>
 
-      {/* Mock UI */}
+      {/* Mock UI — phone widget */}
       <section className="px-6 pb-20 flex justify-center">
-        <div className="bg-card border border-border rounded-3xl p-6 w-full max-w-xs text-left shadow-card">
-          <p className="text-muted text-xs mb-3 uppercase tracking-widest">Цель: Новый iPhone</p>
-          <div className="flex justify-between items-end mb-2">
-            <span className="text-dark font-bold">18 500 ₽</span>
-            <span className="text-muted text-xs">из 90 000 ₽</span>
+        <div
+          className="rounded-3xl p-5 w-full max-w-xs text-left select-none"
+          style={{ background: 'linear-gradient(145deg, #1c1c1e 0%, #2c2c2e 100%)', boxShadow: '0 8px 40px rgba(0,0,0,0.45)' }}
+        >
+          {/* Goal row */}
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#8e8e93' }}>Цель: Новый iPhone 16 Pro</p>
+            <span className="text-[11px] font-bold" style={{ color: '#fd7203' }}>20%</span>
           </div>
-          <div className="w-full bg-border rounded-full h-2 mb-6">
-            <div className="bg-primary h-2 rounded-full" style={{ width: '20%' }} />
+
+          {/* Progress bar */}
+          <div className="w-full rounded-full mb-1" style={{ height: 4, background: '#3a3a3c' }}>
+            <div className="rounded-full h-full" style={{ width: '20%', background: 'linear-gradient(90deg, #fd7203, #ff9a3c)' }} />
           </div>
-          <div className="w-full h-20 rounded-2xl bg-primary text-white font-black text-2xl tracking-widest shadow-orange flex items-center justify-center select-none pointer-events-none">
+
+          {/* Amounts */}
+          <div className="flex justify-between mb-5">
+            <span className="text-xs font-bold" style={{ color: '#ffffff' }}>18 500 ₽</span>
+            <span className="text-xs" style={{ color: '#8e8e93' }}>из 90 000 ₽</span>
+          </div>
+
+          {/* VETO button */}
+          <div
+            className="w-full h-16 rounded-2xl flex items-center justify-center font-black text-2xl tracking-widest text-white"
+            style={{ background: 'linear-gradient(135deg, #fd7203 0%, #ff5500 100%)', boxShadow: '0 0 24px rgba(253,114,3,0.55), 0 4px 16px rgba(0,0,0,0.3)' }}
+          >
             VETO
           </div>
-          <p className="text-center text-muted text-xs mt-3">последний раз: Кофе, −350 ₽</p>
+
+          {/* Footer */}
+          <p className="text-center text-[11px] mt-3" style={{ color: '#636366' }}>последний раз: Кофе, −350 ₽</p>
         </div>
       </section>
 

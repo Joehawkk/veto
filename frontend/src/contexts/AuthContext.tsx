@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { setProfile, setOnboarded } from '../lib/storage'
 
 interface AuthUser {
   id: string
@@ -9,7 +10,7 @@ interface AuthUser {
 interface AuthContextType {
   token: string | null
   user: AuthUser | null
-  login: (token: string, userId: string, username: string, displayName: string) => void
+  login: (token: string, userId: string, username: string, displayName: string, onboarded?: boolean, profileData?: string) => void
   logout: () => void
   isAuthenticated: boolean
 }
@@ -29,12 +30,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
   const [user, setUser] = useState<AuthUser | null>(loadUser)
 
-  const login = useCallback((token: string, userId: string, username: string, displayName: string) => {
+  const login = useCallback((
+    token: string,
+    userId: string,
+    username: string,
+    displayName: string,
+    onboarded?: boolean,
+    profileData?: string,
+  ) => {
     const u: AuthUser = { id: userId, username, display_name: displayName }
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(u))
     setToken(token)
     setUser(u)
+
+    // If server says user already completed onboarding, pre-populate localStorage
+    if (onboarded && profileData) {
+      try {
+        const parsed = JSON.parse(profileData)
+        if (parsed && typeof parsed === 'object') {
+          // Temporarily set user id so storage keys resolve correctly
+          localStorage.setItem('user', JSON.stringify(u))
+          setProfile(parsed)
+          setOnboarded()
+        }
+      } catch {}
+    }
+
     window.dispatchEvent(new Event('veto-auth-change'))
   }, [])
 
