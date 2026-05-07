@@ -43,7 +43,7 @@ const CATEGORIES: Record<StepKey, { title: string; subtitle: string; category: s
     title: 'Как долго ты думаешь об этой покупке?',
     subtitle: 'Честно — когда впервые захотел?',
     category: 'ЛОГИКА',
-    categoryColor: 'text-[#F86D06] bg-[#FFDE8A]/50',
+    categoryColor: 'text-primary-light bg-primary/15',
   },
   mood: {
     title: 'Как ты сейчас себя чувствуешь?',
@@ -199,8 +199,8 @@ export default function Check() {
                 onClick={() => update('thoughtDuration', opt.value)}
                 className={`flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 transition-all active:scale-95 ${
                   answers.thoughtDuration === opt.value
-                    ? 'border-[#F86D06] bg-[#FFDE8A]/30'
-                    : 'border-border bg-bg hover:border-[#F86D06]/30'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border bg-bg hover:border-primary/30'
                 }`}
               >
                 <span className="text-[#F86D06]">{DURATION_ICON[opt.value]}</span>

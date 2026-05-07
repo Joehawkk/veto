@@ -14,16 +14,13 @@ const OUTCOME = {
 
 function outcomeCardClass(entry: CheckEntry): string {
   if (entry.outcome === 'stopped') {
-    return 'border-green-400 bg-green-50 shadow-[0_0_0_1px_rgba(74,222,128,0.4)]'
+    return 'border-primary/40 bg-primary/5 shadow-card'
   }
   if (entry.outcome === 'bought') {
-    if (entry.ai_verdict === 'go')   return 'border-green-400 bg-green-50 shadow-[0_0_0_1px_rgba(74,222,128,0.4)]'
-    if (entry.ai_verdict === 'wait') return 'border-amber-400 bg-amber-50 shadow-card'
-    return 'border-red-400 bg-red-50 shadow-[0_0_0_1px_rgba(248,113,113,0.4)]'
+    if (entry.ai_verdict === 'go')   return 'border-primary/30 bg-primary/5 shadow-card'
+    if (entry.ai_verdict === 'wait') return 'border-border-dark bg-card shadow-card'
+    return 'border-secondary/40 bg-secondary/5 shadow-card'
   }
-  // pending — ждут решения (не зелёные!)
-  if (entry.ai_verdict === 'go')   return 'border-green-400 bg-green-50 shadow-card'
-  if (entry.ai_verdict === 'wait') return 'border-amber-200 bg-amber-50 shadow-card'
   return 'border-border bg-card shadow-card'
 }
 
@@ -82,7 +79,7 @@ function Card({ entry, onOutcome }: { entry: CheckEntry; onOutcome: (id: string,
         <div className={`mt-3 text-xs px-3 py-2 rounded-xl flex items-center gap-2 ${
           expired
             ? 'bg-secondary/10 border border-secondary/20 text-secondary'
-            : 'bg-[#FFDE8A]/40 border border-[#FF9E30]/30 text-[#F86D06]'
+            : 'bg-primary/10 border border-primary/20 text-primary'
         }`}>
           {expired ? <WarningIcon size={13} /> : <ClockIcon size={13} />}
           <span>{expired ? 'Время вышло — пора решить!' : getTimeLeft(entry.timer_deadline!)}</span>
@@ -148,9 +145,9 @@ export default function History() {
         </div>
 
         {stats.pending > 0 && (
-          <div className="bg-[#FFDE8A]/40 border border-[#FF9E30]/40 rounded-2xl px-4 py-3 mb-5 flex items-center gap-3">
-            <ClockIcon size={18} />
-            <p className="text-[#F86D06] text-sm font-medium">
+          <div className="bg-primary/10 border border-primary/25 rounded-2xl px-4 py-3 mb-5 flex items-center gap-3">
+            <span className="text-primary"><ClockIcon size={18} /></span>
+            <p className="text-primary text-sm font-medium">
               {stats.pending} {stats.pending === 1 ? 'товар ждёт' : 'товара ждут'} твоего решения
             </p>
           </div>
