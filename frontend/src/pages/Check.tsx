@@ -2,9 +2,30 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCurrent, setCheckResult, type CheckAnswers, type MoodValue, type ThoughtDuration } from '../lib/storage'
 import { getLocalVerdict } from '../lib/scoring'
+import {
+  CheckMarkIcon, XIcon, TagIcon,
+  ZapIcon, CoffeeIcon, MoonIcon, CalendarIcon,
+  SmileFaceIcon, NeutralFaceIcon, SadFaceIcon, AngryFaceIcon, StressedFaceIcon, TiredFaceIcon,
+} from '../components/Icons'
 
 type StepKey = 'needNow' | 'hasSimilar' | 'duration' | 'mood'
 const STEPS: StepKey[] = ['needNow', 'hasSimilar', 'duration', 'mood']
+
+const DURATION_ICON: Record<ThoughtDuration, JSX.Element> = {
+  '30min':   <ZapIcon size={28} />,
+  '1hour':   <CoffeeIcon size={28} />,
+  '24hours': <MoonIcon size={28} />,
+  '3days':   <CalendarIcon size={28} />,
+}
+
+const MOOD_ICON: Record<MoodValue, JSX.Element> = {
+  good:     <SmileFaceIcon size={32} />,
+  neutral:  <NeutralFaceIcon size={32} />,
+  sad:      <SadFaceIcon size={32} />,
+  angry:    <AngryFaceIcon size={32} />,
+  stressed: <StressedFaceIcon size={32} />,
+  tired:    <TiredFaceIcon size={32} />,
+}
 
 const STEP_META: Record<StepKey, { title: string; subtitle: string; category: string; categoryColor: string }> = {
   needNow: {
@@ -33,20 +54,20 @@ const STEP_META: Record<StepKey, { title: string; subtitle: string; category: st
   },
 }
 
-const DURATION_OPTIONS: { value: ThoughtDuration; label: string; icon: string; sub: string }[] = [
-  { value: '30min', label: '30 минут', icon: '⚡', sub: 'только что захотел' },
-  { value: '1hour', label: '1 час', icon: '☕', sub: 'недавно увидел' },
-  { value: '24hours', label: '24 часа', icon: '🌙', sub: 'вчера заметил' },
-  { value: '3days', label: '3+ дня', icon: '📅', sub: 'давно думаю' },
+const DURATION_OPTIONS: { value: ThoughtDuration; label: string; sub: string }[] = [
+  { value: '30min',   label: '30 минут', sub: 'только что захотел' },
+  { value: '1hour',   label: '1 час',    sub: 'недавно увидел' },
+  { value: '24hours', label: '24 часа',  sub: 'вчера заметил' },
+  { value: '3days',   label: '3+ дня',   sub: 'давно думаю' },
 ]
 
-const MOOD_OPTIONS: { value: MoodValue; emoji: string; label: string; good: boolean }[] = [
-  { value: 'good',     emoji: '😊', label: 'Хорошо',    good: true  },
-  { value: 'neutral',  emoji: '😐', label: 'Нейтрально',good: true  },
-  { value: 'sad',      emoji: '😔', label: 'Грустно',   good: false },
-  { value: 'angry',    emoji: '😠', label: 'Злюсь',     good: false },
-  { value: 'stressed', emoji: '😰', label: 'Стрессую',  good: false },
-  { value: 'tired',    emoji: '😴', label: 'Устал',     good: false },
+const MOOD_OPTIONS: { value: MoodValue; label: string; good: boolean }[] = [
+  { value: 'good',     label: 'Хорошо',     good: true  },
+  { value: 'neutral',  label: 'Нейтрально', good: true  },
+  { value: 'sad',      label: 'Грустно',    good: false },
+  { value: 'angry',    label: 'Злюсь',      good: false },
+  { value: 'stressed', label: 'Стрессую',   good: false },
+  { value: 'tired',    label: 'Устал',      good: false },
 ]
 
 export default function Check() {
@@ -124,15 +145,17 @@ export default function Check() {
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => advance({ [stepKey]: true })}
-                className="py-5 rounded-2xl border-2 border-primary/30 bg-primary/5 text-primary font-black text-lg hover:bg-primary/15 hover:border-primary active:scale-95 transition-all shadow-card"
+                className="flex flex-col items-center justify-center gap-3 py-9 rounded-2xl border-2 border-primary/30 bg-primary/5 text-primary hover:bg-primary/15 hover:border-primary active:scale-95 transition-all shadow-card"
               >
-                ✅ Да
+                <CheckMarkIcon size={34} />
+                <span className="font-black text-lg">Да</span>
               </button>
               <button
                 onClick={() => advance({ [stepKey]: false })}
-                className="py-5 rounded-2xl border-2 border-border bg-white text-gray-dark font-black text-lg hover:border-border-dark hover:text-dark active:scale-95 transition-all shadow-card"
+                className="flex flex-col items-center justify-center gap-3 py-9 rounded-2xl border-2 border-border bg-white text-secondary hover:border-secondary/40 hover:bg-secondary/5 active:scale-95 transition-all shadow-card"
               >
-                ❌ Нет
+                <XIcon size={34} />
+                <span className="font-black text-lg text-gray-dark">Нет</span>
               </button>
             </div>
           )}
@@ -146,7 +169,7 @@ export default function Check() {
                   onClick={() => advance({ thoughtDuration: opt.value })}
                   className="flex flex-col items-center gap-2 py-5 px-3 rounded-2xl border-2 border-border bg-white hover:border-primary hover:bg-primary/5 active:scale-95 transition-all shadow-card"
                 >
-                  <span className="text-3xl">{opt.icon}</span>
+                  <span className="text-[#F86D06]">{DURATION_ICON[opt.value]}</span>
                   <span className="text-dark font-black text-sm">{opt.label}</span>
                   <span className="text-muted text-xs">{opt.sub}</span>
                 </button>
@@ -167,7 +190,9 @@ export default function Check() {
                       : 'border-border bg-white hover:border-secondary/40 hover:bg-secondary/5'
                   }`}
                 >
-                  <span className="text-3xl">{opt.emoji}</span>
+                  <span className={opt.good ? 'text-primary' : 'text-secondary'}>
+                    {MOOD_ICON[opt.value]}
+                  </span>
                   <span className="text-xs font-bold text-gray-dark">{opt.label}</span>
                 </button>
               ))}
@@ -181,7 +206,9 @@ export default function Check() {
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div>
             <p className="text-dark font-bold text-sm">{current.name}</p>
-            <p className="text-muted text-xs">{current.hasDiscount ? '🏷️ Со скидкой' : 'Проверяем покупку'}</p>
+            <p className="text-muted text-xs flex items-center gap-1">
+              {current.hasDiscount ? <><TagIcon size={11} /> Со скидкой</> : 'Проверяем покупку'}
+            </p>
           </div>
           <p className="text-primary font-black text-lg">{current.price.toLocaleString('ru')} ₽</p>
         </div>
